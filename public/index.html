@@ -154,6 +154,14 @@ h3{font-size:18px;font-weight:700}
 .kpi span{font-size:11.5px;color:var(--dim)}
 .mapbox{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg2)}
 .mapbox svg{width:100%;height:auto;display:block}
+.mapbox.zoomable svg.zmap{cursor:grab;touch-action:none}
+.mapbox.zoomable svg.zmap.grabbing{cursor:grabbing}
+#base path{vector-effect:non-scaling-stroke}
+#pts .pt{r:calc(2.5px / var(--z,1))}
+#pts .pt.pc{r:calc(3.7px / var(--z,1))}
+.zctl{position:absolute;top:10px;inset-inline-start:10px;display:flex;flex-direction:column;gap:6px;z-index:5}
+.zctl button{width:34px;height:34px;border:1px solid var(--line);background:var(--card);color:inherit;border-radius:8px;font:600 18px/1 system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.zctl button:hover{background:var(--bg2)}
 .pt{cursor:pointer;outline:none}
 .tip{position:absolute;inset-inline:12px;bottom:12px;background:color-mix(in srgb,var(--bg) 94%,transparent);
   border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px 14px;font-size:12.5px;
@@ -1118,13 +1126,16 @@ function mapSvg(h){
  var CAP=(window.innerWidth<640?1200:(window.innerWidth<1024?2500:4000));
  var pts=CUR.filter(function(r){return r[3]&&r[4]}).slice(0,CAP),s="";
  pts.forEach(function(r){var p=pj(r[4],r[3]);if(!isFinite(p[0]))return;
-  s+='<circle class="pt" tabindex="0" role="button" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+
+  s+='<circle class="pt'+(r[5]?' pc':'')+'" tabindex="0" role="button" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+
    '" r="'+(r[5]?3.7:2.5)+'" fill="'+RC[r[8]]+'" fill-opacity="'+(r[5]?.72:.36)+
    '" stroke="var(--card)" stroke-width=".5" data-i="'+IDX.get(r)+
    '" aria-label="'+esc(dt(r[0])+" "+ENT[r[1]])+'"/>'});
- return '<div class="mapbox" style="'+(h?"max-height:"+h+"px":"")+'">'+
-  '<svg viewBox="0 0 __W__ __H__" role="img" aria-label="'+esc(T().mapHead.h2)+'">'+
+ return '<div class="mapbox zoomable" style="'+(h?"max-height:"+h+"px":"")+'">'+
+  '<svg class="zmap" viewBox="0 0 __W__ __H__" data-w="__W__" data-h="__H__" role="img" aria-label="'+esc(T().mapHead.h2)+'">'+
   '<g id="base">__BASE__</g><g id="pts">'+s+'</g></svg>'+
+  '<div class="zctl"><button type="button" class="zin" aria-label="تكبير">+</button>'+
+  '<button type="button" class="zout" aria-label="تصغير">−</button>'+
+  '<button type="button" class="zrst" aria-label="إعادة الضبط">↻</button></div>'+
   '<div class="tip hide" id="tip"></div></div>';
 }
 function kpis(){
@@ -2584,6 +2595,48 @@ function render(){
  var key=(ROUTES.filter(function(r){return r[0]==="/"+(p[0]||"")})[0]||["","home"])[1];
  document.title=(p.length?T().nav[key]+" — ":"")+T().brand;
  bind();
+ initZoom();
+}
+
+function initZoom(){
+ var boxes=document.querySelectorAll('.mapbox.zoomable');
+ Array.prototype.forEach.call(boxes,function(box){
+  var svg=box.querySelector('svg.zmap'); if(!svg)return;
+  var W=+svg.getAttribute('data-w')||1000, H=+svg.getAttribute('data-h')||640;
+  var vb={x:0,y:0,w:W,h:H}, MAXK=16;
+  function apply(){svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
+   svg.style.setProperty('--z',(W/vb.w).toFixed(3));}
+  function clampBox(){if(vb.w>W){vb.w=W;vb.h=H;} if(vb.w<W/MAXK){vb.w=W/MAXK;vb.h=H/MAXK;}
+   if(vb.x<0)vb.x=0; if(vb.y<0)vb.y=0;
+   if(vb.x+vb.w>W)vb.x=W-vb.w; if(vb.y+vb.h>H)vb.y=H-vb.h;}
+  function zoomAt(px,py,factor){
+   var rect=svg.getBoundingClientRect(); if(!rect.width)return;
+   var ux=vb.x+(px/rect.width)*vb.w, uy=vb.y+(py/rect.height)*vb.h;
+   var nw=vb.w/factor, nh=vb.h/factor;
+   if(nw>W){nw=W;nh=H;} if(nw<W/MAXK){nw=W/MAXK;nh=H/MAXK;}
+   vb.x=ux-(px/rect.width)*nw; vb.y=uy-(py/rect.height)*nh; vb.w=nw; vb.h=nh;
+   clampBox(); apply();}
+  svg.addEventListener('wheel',function(e){e.preventDefault();
+   var rect=svg.getBoundingClientRect();
+   zoomAt(e.clientX-rect.left,e.clientY-rect.top,e.deltaY<0?1.25:1/1.25);},{passive:false});
+  var drag=false,mv=false,lx=0,ly=0;
+  svg.addEventListener('pointerdown',function(e){drag=true;mv=false;lx=e.clientX;ly=e.clientY;});
+  svg.addEventListener('pointermove',function(e){if(!drag)return;
+   var rect=svg.getBoundingClientRect(); if(!rect.width)return;
+   var dx=e.clientX-lx, dy=e.clientY-ly;
+   if(!mv&&Math.abs(dx)+Math.abs(dy)>3){mv=true;svg.classList.add('grabbing');}
+   if(!mv)return;
+   vb.x-=(dx/rect.width)*vb.w; vb.y-=(dy/rect.height)*vb.h; lx=e.clientX;ly=e.clientY;
+   clampBox(); apply();});
+  function endDrag(){drag=false;svg.classList.remove('grabbing');}
+  svg.addEventListener('pointerup',endDrag); svg.addEventListener('pointerleave',endDrag);
+  function ctr(f){var rect=svg.getBoundingClientRect();zoomAt(rect.width/2,rect.height/2,f);}
+  var zi=box.querySelector('.zin'),zo=box.querySelector('.zout'),zr=box.querySelector('.zrst');
+  zi&&zi.addEventListener('click',function(){ctr(1.6);});
+  zo&&zo.addEventListener('click',function(){ctr(1/1.6);});
+  zr&&zr.addEventListener('click',function(){vb={x:0,y:0,w:W,h:H};apply();});
+  apply();
+ });
 }
 
 function bind(){
