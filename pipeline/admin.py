@@ -1,0 +1,304 @@
+# -*- coding: utf-8 -*-
+"""لوحة أدمن «مرصد الشرق الأوسط» — أداة محلية لإدارة المحتوى المنشور.
+
+تشغيل:  python pipeline/admin.py        (تفتح المتصفح على http://127.0.0.1:8765)
+خيارات: --port 8765  --no-browser
+
+الوظائف: بحث/تصفية كل الأحداث، تعديل أي حدث، حذف، ثم «حفظ» (يكتب public/index.html)
+أو «حفظ ونشر» (يكتب + git commit + push → Netlify ينشر تلقائيًا).
+تعمل محليًا فقط (127.0.0.1) — لا تُنشر ولا تحوي أسرارًا.
+"""
+import json, os, re, sys, time, threading, subprocess, webbrowser
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SITE = os.path.join(ROOT, "public", "index.html")
+
+RN = ["حرج", "مرتفع جداً", "مرتفع", "متوسط", "منخفض", "غير محدد"]
+SC = ["إقليمي", "دولي", "داخلي", "غير مصنّف"]
+EV_RE = re.compile(r'(<script id="EV" type="application/json">)(.*?)(</script>)', re.S)
+
+STATE = {"data": None, "dirty": 0}
+
+
+def load():
+    html = open(SITE, encoding="utf-8").read()
+    STATE["data"] = json.loads(EV_RE.search(html).group(2))
+    STATE["dirty"] = 0
+
+
+def save():
+    d = STATE["data"]
+    html = open(SITE, encoding="utf-8").read()
+    m = EV_RE.search(html)
+    payload = json.dumps(d, ensure_ascii=False, separators=(",", ":"))
+    html = html[: m.start(2)] + payload + html[m.end(2):]
+    total = len(d["rows"])
+    html = re.sub(r"رصد [\d,٬]+ حدثًا", f"رصد {total:,} حدثًا", html)
+    open(SITE, "w", encoding="utf-8").write(html)
+    chk = json.loads(EV_RE.search(open(SITE, encoding="utf-8").read()).group(2))
+    assert len(chk["rows"]) == total and len(chk["ents"]) == len(chk["kinds"])
+    STATE["dirty"] = 0
+    return total
+
+
+def publish():
+    total = save()
+    msg = "إدارة المحتوى: تعديلات الأدمن " + time.strftime("%Y-%m-%d %H:%M")
+    out = []
+    for cmd in (["git", "add", "-A"], ["git", "commit", "-m", msg], ["git", "push", "origin", "main"]):
+        p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        out.append((" ".join(cmd[:2]), p.returncode, (p.stdout or "") + (p.stderr or "")))
+        if p.returncode != 0 and cmd[1] != "commit":
+            return {"ok": False, "total": total, "log": out}
+    committed = not any(rc != 0 and name == "git commit" for name, rc, _ in out) or True
+    return {"ok": True, "total": total, "log": out, "committed": committed}
+
+
+def dt_iso(s):
+    return f"20{s[0:2]}-{s[2:4]}-{s[4:6]}"
+
+
+def dt_compact(iso):
+    p = str(iso)[:10].split("-")
+    return p[0][2:] + p[1] + p[2]
+
+
+def nat_names(mask):
+    NAT = STATE["data"]["nat"]
+    return [NAT[i] for i in range(len(NAT)) if mask & (1 << i)]
+
+
+def nat_mask(names):
+    NAT = STATE["data"]["nat"]
+    m = 0
+    for n in names:
+        if n in NAT:
+            m |= 1 << NAT.index(n)
+    return m or (1 << NAT.index("أخرى"))
+
+
+def row_view(i, r):
+    d = STATE["data"]
+    return {
+        "i": i, "التاريخ": dt_iso(r[0]), "الدولة": d["ents"][r[1]], "المدينة": r[2],
+        "خطر": r[8], "خطر_اسم": RN[r[8]] if r[8] < len(RN) else "?",
+        "نطاق": r[7], "طبيعة": nat_names(r[6]), "الحدث": r[9], "التفاصيل": r[10] or "",
+        "المصدر": (r[12] if len(r) > 12 else "") or "", "خط_عرض": r[3], "خط_طول": r[4],
+    }
+
+
+def ent_index(name):
+    d = STATE["data"]
+    name = str(name).split("/")[0].strip()
+    if name in d["ents"]:
+        return d["ents"].index(name)
+    d["ents"].append(name)
+    d["kinds"].append("state")
+    return len(d["ents"]) - 1
+
+
+def api_list(q):
+    d = STATE["data"]
+    rows = list(enumerate(d["rows"]))
+    term = (q.get("q", [""])[0] or "").strip()
+    risk = q.get("risk", [""])[0]
+    country = (q.get("country", [""])[0] or "").strip()
+    df, dt_ = q.get("from", [""])[0], q.get("to", [""])[0]
+    if term:
+        rows = [(i, r) for i, r in rows if term in str(r[9]) or term in str(r[10] or "") or term in d["ents"][r[1]] or term in str(r[2])]
+    if risk != "":
+        rows = [(i, r) for i, r in rows if r[8] == int(risk)]
+    if country:
+        rows = [(i, r) for i, r in rows if country in d["ents"][r[1]]]
+    if df:
+        rows = [(i, r) for i, r in rows if dt_iso(r[0]) >= df]
+    if dt_:
+        rows = [(i, r) for i, r in rows if dt_iso(r[0]) <= dt_]
+    rows.sort(key=lambda x: x[1][0], reverse=True)
+    total = len(rows)
+    page = int(q.get("page", ["1"])[0]); per = 50
+    rows = rows[(page - 1) * per: page * per]
+    return {"total": total, "page": page, "per": per, "dirty": STATE["dirty"],
+            "all": len(d["rows"]), "nat": d["nat"], "rn": RN, "sc": SC,
+            "rows": [row_view(i, r) for i, r in rows]}
+
+
+def api_edit(body):
+    d = STATE["data"]
+    i = int(body["i"]); r = d["rows"][i]
+    r[0] = dt_compact(body["التاريخ"]); r[1] = ent_index(body["الدولة"])
+    r[2] = body.get("المدينة") or "عام"
+    try:
+        r[3] = round(float(body.get("خط_عرض")), 4); r[4] = round(float(body.get("خط_طول")), 4)
+    except (TypeError, ValueError):
+        pass
+    r[6] = nat_mask(body.get("طبيعة") or [])
+    r[7] = int(body.get("نطاق", 3)); r[8] = int(body.get("خطر", 5))
+    r[9] = body["الحدث"].strip(); r[10] = (body.get("التفاصيل") or "").strip()
+    if len(r) > 12:
+        r[12] = (body.get("المصدر") or "").strip()
+    STATE["dirty"] += 1
+    return {"ok": True, "dirty": STATE["dirty"]}
+
+
+def api_delete(body):
+    i = int(body["i"])
+    STATE["data"]["rows"].pop(i)
+    STATE["dirty"] += 1
+    return {"ok": True, "dirty": STATE["dirty"], "all": len(STATE["data"]["rows"])}
+
+
+PAGE = """<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة أدمن — مرصد الشرق الأوسط</title><style>
+:root{--line:#e2e8f0;--dim:#64748b;--bg:#f8fafc;--card:#fff}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,"Segoe UI",sans-serif;background:var(--bg);color:#0f172a}
+header{position:sticky;top:0;z-index:9;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+h1{font-size:16px;margin:0 12px 0 0}input,select,button,textarea{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+button{cursor:pointer}button.p{background:#0f766e;color:#fff;border-color:#0f766e}button.warn{background:#b91c1c;color:#fff;border-color:#b91c1c}
+#stats{color:var(--dim);font-size:13px;margin-inline-start:auto}
+main{max-width:1100px;margin:16px auto;padding:0 14px}
+.ev{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+.chip{padding:2px 9px;border-radius:99px;color:#fff;font-size:12px;white-space:nowrap}
+.meta{color:var(--dim);font-size:12.5px;margin-top:3px}
+.ev .txt{flex:1}.ev .act{display:flex;gap:6px}
+dialog{border:1px solid var(--line);border-radius:12px;max-width:640px;width:92vw}
+dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#nats{display:flex;flex-wrap:wrap;gap:8px}#nats label{border:1px solid var(--line);padding:4px 8px;border-radius:8px;color:inherit;font-size:13px}
+#toast{position:fixed;bottom:16px;inset-inline-start:16px;background:#0f172a;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:99}
+.pager{display:flex;gap:8px;justify-content:center;margin:14px 0}
+</style></head><body>
+<header><h1>🛡️ لوحة الأدمن</h1>
+<input id="q" placeholder="بحث في الأحداث…" style="width:200px">
+<select id="risk"><option value="">كل الدرجات</option></select>
+<input id="country" placeholder="الدولة" style="width:110px">
+<input id="from" type="date"><input id="to" type="date">
+<button onclick="P.go(1)">تصفية</button>
+<span id="stats"></span>
+<button onclick="P.save()">💾 حفظ</button>
+<button class="p" onclick="P.publish()">🚀 حفظ ونشر</button>
+</header><main id="list"></main>
+<div class="pager"><button onclick="P.go(P.page-1)">السابق</button><span id="pg"></span><button onclick="P.go(P.page+1)">التالي</button></div>
+<dialog id="dlg"><form method="dialog" id="f">
+<input type="hidden" name="i">
+<div class="grid2"><div><label>التاريخ</label><input type="date" name="التاريخ" required></div>
+<div><label>درجة الخطر</label><select name="خطر" id="riskSel"></select></div></div>
+<div class="grid2"><div><label>الدولة / الكيان</label><input name="الدولة" required></div>
+<div><label>المدينة</label><input name="المدينة"></div></div>
+<div class="grid2"><div><label>خط العرض</label><input name="خط_عرض"></div><div><label>خط الطول</label><input name="خط_طول"></div></div>
+<div><label>النطاق</label><select name="نطاق" id="scSel"></select></div>
+<div><label>طبيعة الحدث</label><div id="nats"></div></div>
+<div><label>الحدث</label><textarea name="الحدث" rows="3" required></textarea></div>
+<div><label>التفاصيل</label><textarea name="التفاصيل" rows="2"></textarea></div>
+<div><label>المصدر</label><input name="المصدر"></div>
+<div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">إلغاء</button><button class="p" value="ok" onclick="P.submitEdit(event)">حفظ التعديل</button></div>
+</form></dialog>
+<div id="toast"></div>
+<script>
+var RC=["#991b1b","#dc2626","#ea580c","#d97706","#16a34a","#64748b"];
+var P={page:1,meta:null,
+ toast:function(t){var e=document.getElementById('toast');e.textContent=t;e.style.display='block';setTimeout(function(){e.style.display='none'},3500)},
+ go:function(p){if(p<1)return;P.page=p;
+  var ps=new URLSearchParams({q:q.value,risk:risk.value,country:country.value,from:document.getElementById('from').value,to:document.getElementById('to').value,page:p});
+  fetch('/api/list?'+ps).then(r=>r.json()).then(function(d){P.meta=d;
+   if(!risk.options.length||risk.options.length===1){d.rn.forEach(function(n,i){var o=document.createElement('option');o.value=i;o.textContent=n;risk.appendChild(o)})}
+   document.getElementById('stats').textContent='إجمالي: '+d.all+' · نتائج: '+d.total+' · تعديلات غير محفوظة: '+d.dirty;
+   document.getElementById('pg').textContent=p+' / '+Math.max(1,Math.ceil(d.total/d.per));
+   var h='';d.rows.forEach(function(r){
+    h+='<div class="ev"><span class="chip" style="background:'+RC[r['خطر']]+'">'+r['خطر_اسم']+'</span>'+
+     '<div class="txt"><div>'+esc(r['الحدث'])+'</div><div class="meta">'+r['التاريخ']+' · '+esc(r['الدولة'])+' · '+esc(r['المدينة'])+
+     (r['المصدر']?' · '+esc(r['المصدر']).slice(0,60):'')+'</div></div>'+
+     '<div class="act"><button onclick=\\'P.edit('+r.i+')\\'>✎ تعديل</button><button class="warn" onclick="P.del('+r.i+')">✗ حذف</button></div></div>'});
+   document.getElementById('list').innerHTML=h||'<p style="text-align:center;color:#64748b">لا نتائج</p>';
+  })},
+ edit:function(i){var r=P.meta.rows.filter(function(x){return x.i===i})[0];if(!r)return;
+  var f=document.getElementById('f');f.i.value=i;f['التاريخ'].value=r['التاريخ'];f['الدولة'].value=r['الدولة'];
+  f['المدينة'].value=r['المدينة'];f['خط_عرض'].value=r['خط_عرض'];f['خط_طول'].value=r['خط_طول'];
+  f['الحدث'].value=r['الحدث'];f['التفاصيل'].value=r['التفاصيل'];f['المصدر'].value=r['المصدر'];
+  var rs=document.getElementById('riskSel');rs.innerHTML='';P.meta.rn.forEach(function(n,ix){rs.innerHTML+='<option value="'+ix+'"'+(ix===r['خطر']?' selected':'')+'>'+n+'</option>'});
+  var sc=document.getElementById('scSel');sc.innerHTML='';P.meta.sc.forEach(function(n,ix){sc.innerHTML+='<option value="'+ix+'"'+(ix===r['نطاق']?' selected':'')+'>'+n+'</option>'});
+  var nt=document.getElementById('nats');nt.innerHTML='';P.meta.nat.forEach(function(n){nt.innerHTML+='<label><input type="checkbox" value="'+n+'"'+(r['طبيعة'].indexOf(n)>-1?' checked':'')+'> '+n+'</label>'});
+  document.getElementById('dlg').showModal()},
+ submitEdit:function(ev){ev.preventDefault();var f=document.getElementById('f');
+  var nats=Array.prototype.slice.call(document.querySelectorAll('#nats input:checked')).map(function(c){return c.value});
+  var body={i:+f.i.value,'التاريخ':f['التاريخ'].value,'الدولة':f['الدولة'].value,'المدينة':f['المدينة'].value,
+   'خط_عرض':f['خط_عرض'].value,'خط_طول':f['خط_طول'].value,'خطر':+document.getElementById('riskSel').value,
+   'نطاق':+document.getElementById('scSel').value,'طبيعة':nats,'الحدث':f['الحدث'].value,'التفاصيل':f['التفاصيل'].value,'المصدر':f['المصدر'].value};
+  fetch('/api/edit',{method:'POST',body:JSON.stringify(body)}).then(r=>r.json()).then(function(){
+   document.getElementById('dlg').close();P.toast('✓ عُدِّل (غير محفوظ بعد)');P.go(P.page)})},
+ del:function(i){if(!confirm('حذف هذا الحدث نهائيًا من الموقع؟'))return;
+  fetch('/api/delete',{method:'POST',body:JSON.stringify({i:i})}).then(r=>r.json()).then(function(){P.toast('✓ حُذف (غير محفوظ بعد)');P.go(P.page)})},
+ save:function(){fetch('/api/save',{method:'POST'}).then(r=>r.json()).then(function(d){P.toast('💾 حُفظ الملف محليًا ('+d.total+' حدثًا)');P.go(P.page)})},
+ publish:function(){if(!confirm('حفظ ودفع التعديلات — سينشر Netlify الموقع المحدّث. متابعة؟'))return;
+  P.toast('🚀 جارٍ النشر…');
+  fetch('/api/publish',{method:'POST'}).then(r=>r.json()).then(function(d){
+   P.toast(d.ok?'✓ نُشر — Netlify سيحدّث الموقع خلال دقيقة':'⚠ تعذّر النشر — راجع الطرفية');P.go(P.page)})}
+};
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+var q=document.getElementById('q'),risk=document.getElementById('risk'),country=document.getElementById('country');
+q.addEventListener('keydown',function(e){if(e.key==='Enter')P.go(1)});
+P.go(1);
+</script></body></html>"""
+
+
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def _send(self, code, body, ctype="application/json; charset=utf-8"):
+        raw = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def do_GET(self):
+        u = urlparse(self.path)
+        if u.path == "/":
+            self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
+        elif u.path == "/api/list":
+            self._send(200, api_list(parse_qs(u.query)))
+        else:
+            self._send(404, {"err": "not found"})
+
+    def do_POST(self):
+        u = urlparse(self.path)
+        ln = int(self.headers.get("Content-Length") or 0)
+        body = json.loads(self.rfile.read(ln).decode("utf-8")) if ln else {}
+        try:
+            if u.path == "/api/edit":
+                self._send(200, api_edit(body))
+            elif u.path == "/api/delete":
+                self._send(200, api_delete(body))
+            elif u.path == "/api/save":
+                self._send(200, {"ok": True, "total": save()})
+            elif u.path == "/api/publish":
+                self._send(200, publish())
+            else:
+                self._send(404, {"err": "not found"})
+        except Exception as e:
+            self._send(500, {"err": str(e)})
+
+
+def main():
+    port = 8765
+    if "--port" in sys.argv:
+        port = int(sys.argv[sys.argv.index("--port") + 1])
+    load()
+    srv = HTTPServer(("127.0.0.1", port), H)
+    url = f"http://127.0.0.1:{port}"
+    print(f"لوحة الأدمن تعمل: {url}  (أحداث: {len(STATE['data']['rows'])})  — Ctrl+C للإيقاف")
+    if "--no-browser" not in sys.argv:
+        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        print("\nتوقفت اللوحة.")
+
+
+if __name__ == "__main__":
+    main()
