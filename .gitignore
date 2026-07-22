@@ -3,3 +3,5 @@ pipeline/raw_items.json
 pipeline/classified.json
 pipeline/__pycache__/
 *.pyc
+pipeline/sync_excel.log
+pipeline/_sync_task.bat

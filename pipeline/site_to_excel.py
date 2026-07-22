@@ -10,10 +10,29 @@
 تشغيل:  python pipeline/site_to_excel.py            (من الموقع الحيّ)
         python pipeline/site_to_excel.py --local    (من public/index.html المحلي)
 """
-import os, re, sys, json, urllib.request
+import os, re, sys, json, io, datetime, urllib.request
 import pandas as pd
 
+# اجعل الطباعة تعمل بـUTF-8 حتى بلا وحدة تحكّم (تشغيل مجدول)
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 HERE = os.path.dirname(os.path.abspath(__file__))
+_LOG = os.path.join(HERE, "sync_excel.log")
+
+
+def logline(msg):
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{stamp}] {msg}"
+    print(line)
+    try:
+        with io.open(_LOG, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
 LOCAL_SITE = os.path.join(os.path.dirname(HERE), "public", "index.html")
 LIVE_URL = "https://famous-biscochitos-e29381.netlify.app/"
 EXCEL = r"C:/Users/roa44/OneDrive/Työpöytä/Power BI احترافي - الأحداث الإقليمية/بيانات الأحداث الإقليمية (محدثة حتى 2026-07-21).xlsx"
@@ -94,11 +113,15 @@ def main():
         merged = pd.concat([base, pd.DataFrame(new)], ignore_index=True)
         merged = merged.sort_values("التاريخ").reset_index(drop=True)
         merged.to_excel(EXCEL, index=False, sheet_name="Sheet1")
-        print(f"✓ كُتب Excel: {len(base)} → {len(merged)} صفًا | آخر تاريخ: {merged['التاريخ'].max().date()}")
-        print("  افتح Power BI واضغط Refresh لرؤية التحديث في اللوحة.")
+        logline(f"OK: كُتب Excel {len(base)} → {len(merged)} صفًا | آخر تاريخ {merged['التاريخ'].max().date()} (افتح Power BI واضغط Refresh)")
     else:
-        print("لا جديد — Excel متزامن مع الموقع.")
+        logline("OK: لا جديد — Excel متزامن مع الموقع.")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        logline("── بدء المزامنة ──")
+        main()
+    except Exception as e:
+        logline(f"خطأ: {type(e).__name__}: {e}")
+        raise
