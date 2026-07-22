@@ -1,0 +1,5 @@
+# ملفات العمل المؤقتة لخط الأنابيب
+pipeline/raw_items.json
+pipeline/classified.json
+pipeline/__pycache__/
+*.pyc
