@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
 """إعدادات خط أنابيب «مرصد الشرق الأوسط»: المصادر، التصنيف، جدول الإحداثيات."""
+import os as _os
+
+# ── المسارات ─────────────────────────────────────────────────
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+SITE = _os.path.join(_ROOT, "public", "index.html")      # الموقع العام (المعتمد فقط)
+PENDING = _os.path.join(_ROOT, "data", "pending.json")    # طابور المراجعة الخاص
 
 # ── خلاصات RSS الموثوقة (مُختبرة) ─────────────────────────────
 RSS_FEEDS = {
