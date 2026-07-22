@@ -297,7 +297,7 @@ td.n,th.n{display:table-cell}
 .doc td.num,.doc th.num{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
 .doc td.num{font-family:"Inter",system-ui,sans-serif;font-size:13px}
 .doc td.lbl{font-weight:600}
-.doc td.sub{font-size:11.5px;color:var(--dim);font-weight:400;display:block;margin-top:2px}
+.doc td.sub,.doc td .sub{font-size:11.5px;color:var(--dim);font-weight:400;display:block;margin-top:2px}
 .doc .up{color:#b91c1c;font-weight:700}.doc .dn{color:#15803d;font-weight:700}
 .doc .flat{color:var(--faint)}
 .tcap{font-size:11.5px;color:var(--dim);margin:0 0 18px;line-height:1.6}
@@ -1902,8 +1902,12 @@ function pageActors(){
             '<b style="font-size:15.5px">'+esc(ENT[x[0]])+'</b>'+
             '<span class="n" style="margin-inline-start:auto;font-size:12px;color:var(--dim)">'+fmt(x[1])+'</span></div>'+
            '<div class="trk" style="margin-top:10px"><div class="fil" style="width:'+Math.min(100,s.th)+'%;background:var(--grad)"></div></div>'+
-           '<p class="muted" style="font-size:11.5px;margin-top:7px">'+esc(a.thIdx)+' <b class="n">'+s.th+'</b> '+
-            '<span style="color:'+(d>0?RC[1]:(d<0?"var(--ok)":"var(--dim)"))+'">'+(d>0?"▲":(d<0?"▼":"—"))+Math.abs(d)+'</span></p></button>'
+           '<p class="muted" style="font-size:11.5px;margin-top:7px">'+esc(a.thIdx)+' <b class="n">'+s.th+'</b></p>'+
+           '<span style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;color:#fff;background:'+
+            (d>0?RC[1]:(d<0?"#16a34a":"#64748b"))+'">'+
+            (d>0?"\u25B2 "+(S.lang==="ar"?"\u0627\u0631\u062a\u0641\u0627\u0639":"Rising")+" +"+Math.abs(d)
+             :(d<0?"\u25BC "+(S.lang==="ar"?"\u0627\u0646\u062e\u0641\u0627\u0636":"Falling")+" \u2212"+Math.abs(d)
+             :"\u25CF "+(S.lang==="ar"?"\u0645\u0633\u062a\u0642\u0631":"Stable")))+'</span></button>'
         }).join("")+'</div>'}).join("")+
     '</div></section>';
   }
@@ -2365,19 +2369,18 @@ function chMap(rows){
     pts+='<circle cx="'+q[0].toFixed(1)+'" cy="'+q[1].toFixed(1)+'" r="'+(sev?6:4)+
      '" fill="'+RC[r[8]]+'" fill-opacity="'+(sev?.85:.55)+'" stroke="#ffffff" stroke-width="1.1"/>';
   });
-  var lg="", lx=VX+VW-14, ly=VY+VH-16;
+  var lg="", slot=92, bx=VX+VW-10-5*slot, ly=VY+VH-16;
   [0,1,2,3,4].forEach(function(i){
-    var lab=RN(i), w=lab.length*9.8+34;
-    lg+='<circle cx="'+(lx-7).toFixed(1)+'" cy="'+(ly-4)+'" r="5" fill="'+RC[i]+'" fill-opacity=".8" stroke="#fff" stroke-width="1"/>'+
-        '<text x="'+(lx-17).toFixed(1)+'" y="'+ly+'" text-anchor="end" font-size="13" fill="#33473c">'+esc(lab)+'</text>';
-    lx-=w;
+    var x0=bx+(4-i)*slot;
+    lg+='<circle cx="'+(x0+slot-10)+'" cy="'+(ly-4)+'" r="5" fill="'+RC[i]+'" fill-opacity=".85" stroke="#fff" stroke-width="1"/>'+
+        '<text x="'+(x0+slot-20)+'" y="'+ly+'" text-anchor="end" font-size="12" fill="#33473c">'+esc(RN(i))+'</text>';
   });
   chMap.outside=outside; chMap.inside=inside;
   return '<svg viewBox="'+VX+' '+VY+' '+VW+' '+VH+'" role="img" aria-label="'+
     esc(S.lang==="ar"?"خريطة أحداث الشهر":"Map of the month\u2019s events")+'">'+
     '<rect x="'+VX+'" y="'+VY+'" width="'+VW+'" height="'+VH+'" fill="#cadcd2"/>'+
     '<g fill="#f8fbf9" stroke="#9dbcac" stroke-width="1.1" stroke-linejoin="round">__BASE__</g>'+
-    '<rect x="'+(VX+VW-434)+'" y="'+(VY+VH-34)+'" width="430" height="30" rx="6" fill="#ffffff" fill-opacity=".85"/>'+
+    '<rect x="'+(VX+VW-14-5*92)+'" y="'+(VY+VH-34)+'" width="'+(5*92+8)+'" height="30" rx="6" fill="#ffffff" fill-opacity=".88"/>'+
     lg+pts+'</svg>';
 }
 
@@ -2427,21 +2430,15 @@ function docMonthly(k){
   return '<div class="doc" id="docBody">'+
 
   /* ══ الغلاف ══ */
-  '<div class="cover">'+
-   '<div class="rule"></div>'+
+  '<div class="cover" style="padding:20px 24px;margin-bottom:4px">'+
    '<span class="eyb">'+esc(dc.by)+'</span>'+
-   '<h1>'+esc(dc.title)+'</h1>'+
-   '<p class="lead" style="margin-bottom:2px">'+esc(dc.covScopeV)+'</p>'+
-   '<span class="per">'+esc(k)+'</span>'+
-   '<div class="covmeta">'+
-    '<div><dt>'+esc(dc.covPeriod)+'</dt><dd class="n">'+esc(k)+'</dd></div>'+
-    '<div><dt>'+esc(dc.covIssued)+'</dt><dd class="n">'+esc(GEN)+'</dd></div>'+
-    '<div><dt>'+esc(dc.covRef)+'</dt><dd class="n">MENA-'+esc(k.replace("-",""))+'</dd></div>'+
-    '<div><dt>'+esc(dc.covScope)+'</dt><dd>'+esc(dc.covScopeV)+'</dd></div>'+
-    '<div><dt>'+esc(dc.covBasis)+'</dt><dd>'+esc(dc.covBasisV.replace("{n}",fmt(R.length)).replace("{m}",monthKeys().length))+'</dd></div>'+
-    '<div><dt>'+esc(dc.covClass)+'</dt><dd>'+esc(dc.covClassV)+'</dd></div>'+
+   '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:6px">'+
+    '<h1 style="margin:0;font-size:clamp(20px,3vw,30px)">'+esc(dc.title)+'</h1>'+
+    '<span class="per">'+esc(k)+'</span>'+
+    '<span class="muted" style="font-size:12px">'+esc(dc.covIssued)+': '+esc(GEN)+' \u00b7 '+
+     esc(dc.covBasisV.replace("{n}",fmt(R.length)).replace("{m}",monthKeys().length))+'</span>'+
    '</div>'+
-   (thin?'<div class="limits" style="margin-top:20px"><b>'+esc(dc.thinH)+'</b><p style="margin:6px 0 0">'+esc(dc.thinB)+'</p></div>':'')+
+   (thin?'<div class="limits" style="margin-top:12px"><b>'+esc(dc.thinH)+'</b> '+esc(dc.thinB)+'</div>':'')+
   '</div>'+
 
   /* ══ ١ · لوحة المؤشرات ══ */
@@ -2464,7 +2461,8 @@ function docMonthly(k){
 
   /* ══ ٢ · الملخص التنفيذي ══ */
   SEC(NUM[1],dc.s1)+
-  P.map(function(x){return '<p>'+esc(x)+'</p>'}).join("")+
+  '<ul style="margin:0 0 10px;padding-inline-start:22px;line-height:1.9">'+
+  P.map(function(x){return '<li style="margin-bottom:6px">'+esc(x)+'</li>'}).join("")+'</ul>'+
 
   /* ══ ٣ · الصورة الكمّية ══ */
   SEC(NUM[2],dc.s2)+
@@ -2499,8 +2497,7 @@ function docMonthly(k){
      return '<tr><td class="lbl">'+esc(x.city)+'<span class="sub">'+esc(ENT[x.ent])+'</span></td>'+
       '<td class="num">'+(x.months[k]||0)+'</td><td class="num">'+x.sev+'</td>'+
       '<td class="num">'+Math.round(x.ratio*100)+'%</td><td>'+esc(natL(x.top))+'</td></tr>'}).join("")+
-   '</tbody></table>'+tcap(dc.tabHs)+
-   '<div class="callout"><b>'+esc(dc.hsNoteH)+'</b> '+esc(dc.hsNote)+'</div>' :'')+
+   '</tbody></table>'+tcap(dc.tabHs) :'')+
 
   /* ══ ٥ · أشد الأحداث ══ */
   (b.severe.length? SEC(NUM[4],dc.s4)+
@@ -2509,14 +2506,13 @@ function docMonthly(k){
    '<th>'+esc(t.risk)+'</th><th>'+esc(ar?"الوصف":"Description")+'</th></tr></thead><tbody>'+
    b.severe.slice(0,10).map(function(r){
      return '<tr><td class="num">'+dt(r[0])+'</td>'+
-      '<td class="lbl">'+esc(ENT[r[1]])+(r[2]?'<span class="sub">'+esc(r[2])+'</span>':'')+'</td>'+
+      '<td class="lbl">'+esc(ENT[r[1]])+(r[2]?'<span class="sub" style="display:block">'+esc(r[2])+'</span>':'')+'</td>'+
       '<td><span class="rk" style="background:'+RC[r[8]]+';font-size:10px">'+esc(RN(r[8]))+'</span></td>'+
       '<td>'+esc(r[9])+'</td></tr>'}).join("")+
    '</tbody></table>'+tcap(ar?"أشد أحداث الشهر خطورة، مرتّبة بالدرجة ثم بالأحدث.":"The month’s most severe events, ordered by grade then recency.") :'')+
 
   /* ══ ٦ · المؤشرات الاستشرافية ══ */
   (fwd.length? SEC(NUM[5],dc.s5)+
-   '<p>'+esc(dc.fwdIntro)+'</p>'+
    '<table>'+cols(["40%","20%","20%","20%"])+
    '<thead><tr><th>'+esc(t.entity)+'</th><th class="num">'+esc(dc.position)+'</th>'+
    '<th class="num">'+esc(dc.sample)+'</th><th class="num">'+esc(dc.roseNext)+'</th></tr></thead><tbody>'+
@@ -2525,27 +2521,13 @@ function docMonthly(k){
       '<td class="num">'+(o.br.z>0?"+":"")+o.br.z+'σ</td>'+
       '<td class="num">'+o.br.n+'</td>'+
       '<td class="num">'+o.br.rose+' / '+o.br.n+' <b>('+o.br.p+'%)</b></td></tr>'}).join("")+
-   '</tbody></table>'+tcap(dc.tabFwd)+
-   '<div class="callout"><b>'+esc(dc.fwdWarnH)+'</b> '+esc(dc.fwdWarn)+'</div>' :'')+
+   '</tbody></table>'+tcap(dc.tabFwd) :'')+
 
-  /* ══ ٧ · حدود البيانات ══ */
-  SEC(NUM[6],dc.s6)+
-  '<div class="limits">'+
-   '<p style="margin:0 0 8px"><b>'+esc(dc.limH)+'</b></p><ul style="margin-bottom:0">'+
-   dc.limits.map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+
-   (aiN?'<li><b>'+esc(dc.aiLim.replace("{n}",aiN)
-     .replace("{u}",rows.filter(function(r){return prov(r)===2&&!aiVerified(r)}).length))+'</b></li>':'')+
-   '</ul></div>'+
-
-  /* ══ ٨ · المنهجية ══ */
-  SEC(NUM[7],dc.s7)+
-  '<p>'+esc(dc.method)+'</p>'+
-
-  /* ══ ٩ · التقييم التحليلي ══ */
-  SEC(NUM[8],dc.s8)+
-  '<div class="callout"><b>'+esc(dc.analystH)+'</b><p style="margin:6px 0 0">'+esc(dc.analystB)+'</p></div>'+
-  '<div style="border:1px dashed var(--line);border-radius:10px;padding:22px;margin-top:12px;min-height:170px">'+
-   '<p style="color:var(--faint);font-size:13px;margin:0">'+esc(dc.analystPh)+'</p></div>'+
+  '<div class="limits" style="margin-top:20px;font-size:12px;line-height:1.8">'+
+   '<b>'+esc(dc.limH)+'</b> '+dc.limits.map(function(x){return esc(x)}).join(' \u00b7 ')+
+   (aiN?' \u00b7 <b>'+esc(dc.aiLim.replace("{n}",aiN)
+     .replace("{u}",rows.filter(function(r){return prov(r)===2&&!aiVerified(r)}).length))+'</b>':'')+
+  '</div>'+
 
   '<div class="sig">'+esc(dc.footer.replace("{d}",GEN))+'</div>'+
  '</div>';
@@ -2569,9 +2551,7 @@ function pageDoc(){
 }
 
 /* ══════════ الرأس والتذييل والتوجيه ══════════ */
-var ROUTES=[["/","home"],["/dashboard","dash"],["/atlas","atlas"],["/explorer","explorer"],
-            ["/report","doc"],["/hotspots","hotspots"],["/actors","actors"],["/reports","reports"],["/forecasts","forecasts"],
-            ["/methodology","method"],["/about","about"],["/contact","contact"]];
+var ROUTES=[["/","home"],["/dashboard","dash"],["/report","doc"],["/atlas","atlas"],["/explorer","explorer"],["/hotspots","hotspots"],["/actors","actors"],["/reports","reports"],["/forecasts","forecasts"],["/methodology","method"],["/about","about"],["/contact","contact"]];
 
 function renderChrome(){
  var t=T();
