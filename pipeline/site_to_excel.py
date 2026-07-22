@@ -35,7 +35,7 @@ def logline(msg):
         pass
 LOCAL_SITE = os.path.join(os.path.dirname(HERE), "public", "index.html")
 LIVE_URL = "https://famous-biscochitos-e29381.netlify.app/"
-EXCEL = r"C:/Users/roa44/OneDrive/Työpöytä/Power BI احترافي - الأحداث الإقليمية/بيانات الأحداث الإقليمية (محدثة حتى 2026-07-21).xlsx"
+EXCEL = r"C:/Users/roa44/OneDrive/Työpöytä/مرصد الشرق الأوسط/Power BI و Excel/بيانات الأحداث الإقليمية (محدثة حتى 2026-07-21).xlsx"
 
 COLS = ["التاريخ", "الدولة / الكيان", "المدينة / المنطقة", "خط العرض", "خط الطول",
         "طبيعة الحدث", "نوع الحدث", "درجة المخاطر", "الحدث الرئيسي", "تفاصيل الحدث",
