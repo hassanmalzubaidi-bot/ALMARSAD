@@ -86,6 +86,7 @@ def row_view(i, r):
         "خطر": r[8], "خطر_اسم": RN[r[8]] if r[8] < len(RN) else "?",
         "نطاق": r[7], "طبيعة": nat_names(r[6]), "الحدث": r[9], "التفاصيل": r[10] or "",
         "المصدر": (r[12] if len(r) > 12 else "") or "", "خط_عرض": r[3], "خط_طول": r[4],
+        "مميز": bool(len(r) > 14 and r[14] == 1),
     }
 
 
@@ -150,6 +151,17 @@ def api_delete(body):
     return {"ok": True, "dirty": STATE["dirty"], "all": len(STATE["data"]["rows"])}
 
 
+def api_feature(body):
+    """إبراز/إلغاء إبراز حدث: الحقل r[14] (يُوسَّع الصف عند الحاجة)."""
+    i = int(body["i"]); on = int(body.get("on", 1))
+    r = STATE["data"]["rows"][i]
+    while len(r) < 15:
+        r.append(0)
+    r[14] = 1 if on else 0
+    STATE["dirty"] += 1
+    return {"ok": True, "dirty": STATE["dirty"], "مميز": bool(r[14])}
+
+
 PAGE = """<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>لوحة أدمن — مرصد الشرق الأوسط</title><style>
@@ -211,7 +223,8 @@ var P={page:1,meta:null,
     h+='<div class="ev"><span class="chip" style="background:'+RC[r['خطر']]+'">'+r['خطر_اسم']+'</span>'+
      '<div class="txt"><div>'+esc(r['الحدث'])+'</div><div class="meta">'+r['التاريخ']+' · '+esc(r['الدولة'])+' · '+esc(r['المدينة'])+
      (r['المصدر']?' · '+esc(r['المصدر']).slice(0,60):'')+'</div></div>'+
-     '<div class="act"><button onclick=\\'P.edit('+r.i+')\\'>✎ تعديل</button><button class="warn" onclick="P.del('+r.i+')">✗ حذف</button></div></div>'});
+     '<div class="act"><button onclick="P.feat('+r.i+','+(r['مميز']?0:1)+')" title="إبراز في الموقع" style="color:'+(r['مميز']?'#eab308':'#94a3b8')+';font-size:16px">'+(r['مميز']?'★':'☆')+'</button>'+
+     '<button onclick=\\'P.edit('+r.i+')\\'>✎ تعديل</button><button class="warn" onclick="P.del('+r.i+')">✗ حذف</button></div></div>'});
    document.getElementById('list').innerHTML=h||'<p style="text-align:center;color:#64748b">لا نتائج</p>';
   })},
  edit:function(i){var r=P.meta.rows.filter(function(x){return x.i===i})[0];if(!r)return;
@@ -229,6 +242,8 @@ var P={page:1,meta:null,
    'نطاق':+document.getElementById('scSel').value,'طبيعة':nats,'الحدث':f['الحدث'].value,'التفاصيل':f['التفاصيل'].value,'المصدر':f['المصدر'].value};
   fetch('/api/edit',{method:'POST',body:JSON.stringify(body)}).then(r=>r.json()).then(function(){
    document.getElementById('dlg').close();P.toast('✓ عُدِّل (غير محفوظ بعد)');P.go(P.page)})},
+ feat:function(i,on){fetch('/api/feature',{method:'POST',body:JSON.stringify({i:i,on:on})}).then(r=>r.json()).then(function(){
+  P.toast(on?'★ أُبرز — سيظهر في الشريط بعد الحفظ والنشر':'أُلغي الإبراز (غير محفوظ بعد)');P.go(P.page)})},
  del:function(i){if(!confirm('حذف هذا الحدث نهائيًا من الموقع؟'))return;
   fetch('/api/delete',{method:'POST',body:JSON.stringify({i:i})}).then(r=>r.json()).then(function(){P.toast('✓ حُذف (غير محفوظ بعد)');P.go(P.page)})},
  save:function(){fetch('/api/save',{method:'POST'}).then(r=>r.json()).then(function(d){P.toast('💾 حُفظ الملف محليًا ('+d.total+' حدثًا)');P.go(P.page)})},
@@ -274,6 +289,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, api_edit(body))
             elif u.path == "/api/delete":
                 self._send(200, api_delete(body))
+            elif u.path == "/api/feature":
+                self._send(200, api_feature(body))
             elif u.path == "/api/save":
                 self._send(200, {"ok": True, "total": save()})
             elif u.path == "/api/publish":
