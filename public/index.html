@@ -782,7 +782,7 @@ var I18N={
     kDelta:"مقابل الشهر السابق", kHot:"بؤر نشطة", kAlerts:"إشارات إنذار",
     capMap:"توزيع أحداث الشهر جغرافيًا. حجم النقطة يعكس درجة الخطورة، ولونها يطابق سلّم الخطورة أدناه. النقاط الموضوعة على مركز الدولة تظهر متراكبة.",
     capMapOut:"يقع {n} من أحداث الشهر خارج هذه النافذة الجغرافية فلا تظهر عليها.",
-    capTrend:"عدد الأحداث المسجّلة شهريًا خلال آخر ثمانية عشر شهرًا. العمود الداكن هو شهر التقرير.",
+    capTrend:"عدد الأحداث المسجّلة شهريًا خلال آخر ثمانية عشر شهرًا، وكل عمود مقسّم بألوان درجات الخطورة (الأشد أعلاه). عمود شهر التقرير كامل الوضوح ومعلَّم برقمه.",
     capRisk:"حصة كل درجة خطورة من أحداث الشهر.",
     capNat:"أكثر ست طبائع تكرارًا في أحداث الشهر. الحدث الواحد قد يحمل أكثر من طبيعة، فالمجموع يتجاوز عدد الأحداث.",
     tabRisk:"توزيع أحداث الشهر على درجات الخطورة، وفرق العدد عن الشهر السابق.",
@@ -1006,7 +1006,7 @@ var I18N={
     kDelta:"vs previous month", kHot:"Active hotspots", kAlerts:"Alert signals",
     capMap:"Geographic distribution of the month\u2019s events. Dot size reflects severity; colour matches the risk scale. Points at country centroids appear overlapped.",
     capMapOut:"{n} of the month\u2019s events fall outside this geographic window and are not shown.",
-    capTrend:"Events recorded per month over the last eighteen months. The dark column is the reporting month.",
+    capTrend:"Events recorded per month over the last eighteen months; each bar is stacked by risk-level colours (most severe on top). The report month is fully opaque and labelled.",
     capRisk:"Share of each risk grade among the month\u2019s events.",
     capNat:"The six most frequent event natures. One event may carry several natures, so the total exceeds the event count.",
     tabRisk:"Distribution across risk grades, with the change from the previous month.",
@@ -2270,19 +2270,29 @@ function chTrend(k){
        '" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3"/>';
   }
   use.forEach(function(m,i){
-    var v=vals[i], h=(H-pad.t-pad.b)*(v/mx), x=pad.l+i*bw+gap/2, y=H-pad.b-h;
+    var v=vals[i], hh=(H-pad.t-pad.b)*(v/mx), x=pad.l+i*bw+gap/2, y=H-pad.b-hh;
     var cur=(m===k), thin=drop.indexOf(m)>=0;
-    var fillv=cur?"var(--brand)":(thin?"var(--faint)":"var(--line2, #9fc4ae)");
-    g+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(bw-gap).toFixed(1)+'" height="'+Math.max(h,1).toFixed(1)+
-       '" rx="2" fill="'+(cur?"#006C35":(thin?"#c9d6cd":"#7fae94"))+'"'+
-       (thin?' fill-opacity=".55"':'')+'><title>'+esc(m+": "+v)+'</title></rect>';
+    var rr=[0,0,0,0,0,0];
+    monthRows(m).forEach(function(r){rr[Math.min(r[8],5)]++});
+    var op=cur?1:(thin?0.45:0.8);
+    g+='<g>'+ '<title>'+esc(m+": "+v)+'</title>';
+    var yy=H-pad.b;
+    [5,4,3,2,1,0].forEach(function(ri){
+      var c=rr[ri]; if(!c)return;
+      var sh=(H-pad.t-pad.b)*(c/mx);
+      yy-=sh;
+      g+='<rect x="'+x.toFixed(1)+'" y="'+yy.toFixed(1)+'" width="'+(bw-gap).toFixed(1)+'" height="'+Math.max(sh,.8).toFixed(1)+
+         '" fill="'+(ri===5?"#94a3b8":RC[ri])+'" fill-opacity="'+op+'"/>';
+    });
+    g+='</g>';
     if(cur) g+='<text x="'+(x+(bw-gap)/2).toFixed(1)+'" y="'+(y-5).toFixed(1)+
        '" text-anchor="middle" font-size="11" font-weight="700" fill="#006C35">'+v+'</text>';
     if(i%3===0||cur) g+='<text x="'+(x+(bw-gap)/2).toFixed(1)+'" y="'+(H-pad.b+14)+
        '" text-anchor="middle" font-size="9" fill="#7b8a80" direction="ltr">'+esc(m.slice(2))+'</text>';
   });
   g+='<line x1="'+pad.l+'" y1="'+(H-pad.b)+'" x2="'+(W-pad.r)+'" y2="'+(H-pad.b)+'" stroke="#b9cfc0" stroke-width="1"/>';
-  g+='<text x="'+(W-pad.r)+'" y="'+(H-6)+'" text-anchor="end" font-size="9" fill="#7b8a80">'+
+  if(use.some(function(m){return drop.indexOf(m)>=0}))
+    g+='<text x="'+pad.l+'" y="10" text-anchor="start" font-size="9" fill="#7b8a80">'+
      esc(S.lang==="ar"?"الأعمدة الباهتة = أشهر تغطيتها متفرّقة":"Faded bars = sparse-coverage months")+'</text>';
   return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+
     esc(S.lang==="ar"?"عدد الأحداث شهريًا":"Events per month")+'">'+g+'</svg>';
@@ -2316,13 +2326,23 @@ function chRisk(b){
 }
 
 /* أشرطة أفقية لطبائع الأحداث */
-function chNat(b){
+function chNat(b,rows){
   var top=b.nats.slice(0,6), W=680, rowh=27, H=top.length*rowh+22, g="";
   var mx=top.length?top[0][1]:1, lw=110;
   top.forEach(function(o,i){
     var y=i*rowh+8, w=(W-lw-52)*(o[1]/mx);
+    var rr=[0,0,0,0,0,0];
+    (rows||[]).forEach(function(r){if(r[6]&(1<<o[0]))rr[Math.min(r[8],5)]++});
+    var tot=rr[0]+rr[1]+rr[2]+rr[3]+rr[4]+rr[5]||1;
     g+='<text x="'+W+'" y="'+(y+15)+'" text-anchor="end" font-size="11.5" fill="#3c4a41">'+esc(natL(o[0]))+'</text>';
-    g+='<rect x="'+(W-lw-w).toFixed(1)+'" y="'+(y+4)+'" width="'+w.toFixed(1)+'" height="15" rx="3" fill="#006C35" fill-opacity="'+(1-i*0.12).toFixed(2)+'"/>';
+    var xx=W-lw;
+    [0,1,2,3,4,5].forEach(function(ri){
+      var c=rr[ri]; if(!c)return;
+      var sw=w*(c/tot);
+      g+='<rect x="'+(xx-sw).toFixed(1)+'" y="'+(y+4)+'" width="'+Math.max(sw,.8).toFixed(1)+'" height="15" fill="'+(ri===5?"#94a3b8":RC[ri])+
+         '"><title>'+esc(natL(o[0])+" \u2014 "+RN(ri)+": "+c)+'</title></rect>';
+      xx-=sw;
+    });
     g+='<text x="'+(W-lw-w-6).toFixed(1)+'" y="'+(y+16)+'" text-anchor="end" font-size="10.5" font-weight="700" fill="#5a6b61" direction="ltr">'+o[1]+'</text>';
   });
   return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+
@@ -2347,7 +2367,7 @@ function chMap(rows){
   });
   var lg="", lx=VX+VW-14, ly=VY+VH-16;
   [0,1,2,3,4].forEach(function(i){
-    var lab=RN(i), w=lab.length*7.4+26;
+    var lab=RN(i), w=lab.length*9.8+34;
     lg+='<circle cx="'+(lx-7).toFixed(1)+'" cy="'+(ly-4)+'" r="5" fill="'+RC[i]+'" fill-opacity=".8" stroke="#fff" stroke-width="1"/>'+
         '<text x="'+(lx-17).toFixed(1)+'" y="'+ly+'" text-anchor="end" font-size="13" fill="#33473c">'+esc(lab)+'</text>';
     lx-=w;
@@ -2357,7 +2377,7 @@ function chMap(rows){
     esc(S.lang==="ar"?"خريطة أحداث الشهر":"Map of the month\u2019s events")+'">'+
     '<rect x="'+VX+'" y="'+VY+'" width="'+VW+'" height="'+VH+'" fill="#cadcd2"/>'+
     '<g fill="#f8fbf9" stroke="#9dbcac" stroke-width="1.1" stroke-linejoin="round">__BASE__</g>'+
-    '<rect x="'+(VX+VW-330)+'" y="'+(VY+VH-34)+'" width="326" height="30" rx="6" fill="#ffffff" fill-opacity=".82"/>'+
+    '<rect x="'+(VX+VW-434)+'" y="'+(VY+VH-34)+'" width="430" height="30" rx="6" fill="#ffffff" fill-opacity=".85"/>'+
     lg+pts+'</svg>';
 }
 
@@ -2439,7 +2459,7 @@ function docMonthly(k){
   fig(chTrend(k), dc.capTrend)+
   '<div class="figrow">'+
    '<div>'+fig(chRisk(b), dc.capRisk)+'</div>'+
-   '<div>'+fig(chNat(b), dc.capNat)+'</div>'+
+   '<div>'+fig(chNat(b,rows), dc.capNat)+'</div>'+
   '</div>'+
 
   /* ══ ٢ · الملخص التنفيذي ══ */
