@@ -842,6 +842,7 @@ var I18N={
     info:"معلومات التواصل",sent:"هذا نموذج عرض ولا يرسل فعليًا. يُربط بالبريد عند التشغيل."},
   footer:{about:"مرصد تفاعلي للأحداث الجيوسياسية في الشرق الأوسط وشمال أفريقيا، مبني على بيانات مصنّفة ومنهجية معلنة.",
     links:"أقسام الموقع",data:"البيانات",contact:"تواصل",rights:"جميع الحقوق محفوظة.",
+    daily:"لوحة التوتر الجيوسياسي اليومية",
     src:"المصدر: ملف الأحداث الإقليمية بعد التنظيف والتوحيد",
     upd:"آخر تحديث للبيانات"}},
 
@@ -1068,6 +1069,7 @@ var I18N={
     info:"Contact details",sent:"This is a demo form and does not send. It connects to email on deployment."},
   footer:{about:"An interactive observatory of geopolitical events across the Middle East and North Africa, built on classified data and a declared methodology.",
     links:"Sections",data:"Data",contact:"Contact",rights:"All rights reserved.",
+    daily:"Daily geopolitical tension dashboard",
     src:"Source: regional events file after cleaning and canonicalisation",
     upd:"Data last updated"}}
 };
@@ -2567,7 +2569,8 @@ function renderChrome(){
   '<div><div class="logo" style="margin-bottom:14px"><span class="mark">M</span>'+
    '<span><b>'+esc(t.brand)+'</b><span>'+esc(t.brandSub)+'</span></span></div><p>'+esc(f.about)+'</p></div>'+
   '<div><h4>'+esc(f.links)+'</h4><ul>'+ROUTES.map(function(r){
-   return '<li><a href="#'+r[0]+'" data-nav>'+esc(t.nav[r[1]])+'</a></li>'}).join("")+'</ul></div>'+
+   return '<li><a href="#'+r[0]+'" data-nav>'+esc(t.nav[r[1]])+'</a></li>'}).join("")+
+   '<li><a href="https://hassanmalzubaidi-bot.github.io/NEWS/" target="_blank" rel="noopener">'+esc(f.daily)+' ↗</a></li></ul></div>'+
   '<div><h4>'+esc(f.data)+'</h4>'+
    '<p style="margin-bottom:7px"><b class="n">'+fmt(R.length)+'</b> '+esc(S.lang==="ar"?"حدثًا":"events")+'</p>'+
    '<p style="margin-bottom:7px"><b class="n">'+ENT.length+'</b> '+esc(S.lang==="ar"?"كيانًا":"entities")+'</p>'+
