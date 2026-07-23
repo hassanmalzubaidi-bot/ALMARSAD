@@ -144,6 +144,7 @@ def api_list(q):
     return {"total": total, "page": page, "per": per, "dirty": STATE["dirty"],
             "all": len(d["rows"]), "nat": d["nat"], "rn": RN, "sc": SC,
             "reports": d.get("reports", {}), "hidden": d.get("hidden", []), "pages": PAGES,
+            "forecasts": d.get("forecasts", []),
             "months": sorted({dt_iso(r[0])[:7] for r in d["rows"]}, reverse=True),
             "rows": [row_view(i, r) for i, r in rows]}
 
@@ -216,6 +217,25 @@ def api_pages(body):
     return {"ok": True, "dirty": STATE["dirty"], "hidden": hidden}
 
 
+def api_forecast(body):
+    """إغلاق توقع (correct/wrong/partial) أو إعادة فتحه (outcome=null) — الدقة وBrier يُحسبان في الموقع."""
+    fid = str(body.get("id", "")).strip()
+    outcome = body.get("outcome")
+    if outcome not in ("correct", "wrong", "partial", None):
+        return {"ok": False, "err": "outcome غير صالح"}
+    fcs = STATE["data"].setdefault("forecasts", [])
+    f = next((x for x in fcs if x.get("id") == fid), None)
+    if not f:
+        return {"ok": False, "err": f"لا توقع بالمعرف {fid}"}
+    f["outcome"] = outcome
+    f["resolvedOn"] = time.strftime("%Y-%m-%d") if outcome else None
+    note = str(body.get("note", "")).strip()
+    if note:
+        f["note"] = note
+    STATE["dirty"] += 1
+    return {"ok": True, "dirty": STATE["dirty"], "id": fid, "outcome": outcome, "resolvedOn": f["resolvedOn"]}
+
+
 PAGE = """<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>لوحة أدمن — مرصد الشرق الأوسط</title><style>
@@ -247,6 +267,7 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
 <button onclick="P.save()">💾 حفظ</button>
 <button onclick="P.openPages()">👁️ الصفحات</button>
 <button onclick="P.openAssess()">✍️ التقييم التحليلي</button>
+<button onclick="P.openFc()">⏳ التوقعات</button>
 <button class="p" onclick="P.publish()">🚀 حفظ ونشر</button>
 </header><main id="list"></main>
 <dialog id="adlg"><form method="dialog" id="af" style="display:grid;gap:10px;min-width:min(680px,92vw)">
@@ -258,6 +279,12 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
 <p class="meta" style="margin:0">يُحفظ للشهر المختار ويحلّ محلّ السقالة في صفحة «التقارير». لمسحه: افرغ النص واحفظ.</p>
 <div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">إغلاق</button>
 <button class="p" value="ok" onclick="P.saveAssess(event)">حفظ التقييم</button></div>
+</form></dialog>
+<dialog id="fdlg"><form method="dialog" style="display:grid;gap:10px;min-width:min(700px,94vw)">
+<h3 style="margin:0">⏳ سجل التوقعات — الإغلاق والمحاسبة</h3>
+<p class="meta" style="margin:0">التوقع المستحق (تجاوز أفقه بلا إغلاق) يظهر بإطار أحمر. الإغلاق يُحدّث الدقة وBrier في الموقع تلقائيًا بعد «حفظ ونشر».</p>
+<div id="fcList" style="display:grid;gap:8px;max-height:60vh;overflow:auto"></div>
+<div style="display:flex;justify-content:flex-end"><button value="cancel">إغلاق</button></div>
 </form></dialog>
 <dialog id="pdlg"><form method="dialog" style="display:grid;gap:10px;min-width:min(460px,92vw)">
 <h3 style="margin:0">👁️ التحكم في الصفحات</h3>
@@ -351,7 +378,32 @@ var P={page:1,meta:null,
   Array.prototype.forEach.call(boxes,function(b){if(!b.checked)hidden.push(b.getAttribute('data-path'))});
   fetch('/api/pages',{method:'POST',body:JSON.stringify({hidden:hidden})}).then(r=>r.json()).then(function(d){
    document.getElementById('pdlg').close();
-   P.toast('✓ '+(d.hidden.length?d.hidden.length+' صفحة مخفية':'كل الصفحات ظاهرة')+' (اضغط «حفظ ونشر»)');P.go(P.page)})}
+   P.toast('✓ '+(d.hidden.length?d.hidden.length+' صفحة مخفية':'كل الصفحات ظاهرة')+' (اضغط «حفظ ونشر»)');P.go(P.page)})},
+ openFc:function(){P.renderFc();document.getElementById('fdlg').showModal()},
+ renderFc:function(){
+  var fcs=(P.meta&&P.meta.forecasts)||[], today=new Date().toISOString().slice(0,10);
+  var oc={correct:['صحيح','#16a34a'],wrong:['خاطئ','#b91c1c'],partial:['جزئي','#0f766e']};
+  document.getElementById('fcList').innerHTML=fcs.map(function(f){
+   var late=!f.outcome&&f.horizon<=today;
+   var st=f.outcome?oc[f.outcome]:[late?'مستحق ⚠':'مفتوح',late?'#b91c1c':'#64748b'];
+   return '<div style="border:1.5px solid '+(late?'#b91c1c':'var(--line)')+';border-radius:10px;padding:10px 12px">'+
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+     '<span class="chip" style="background:'+st[1]+'">'+st[0]+'</span>'+
+     '<span class="chip" style="background:#334155">ثقة '+f.confidence+'%</span>'+
+     '<span class="meta">الأفق: '+f.horizon+(f.resolvedOn?' · أُغلق: '+f.resolvedOn:'')+'</span></div>'+
+    '<div style="margin:7px 0 9px;font-size:13.5px;line-height:1.7">'+esc(f.statement)+'</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+     (f.outcome?'<button type="button" onclick=\\'P.fcSet("'+f.id+'",null)\\'>↺ إعادة فتح</button>'
+      :'<button type="button" style="color:#16a34a" onclick=\\'P.fcSet("'+f.id+'","correct")\\'>✓ صحيح</button>'+
+       '<button type="button" style="color:#b91c1c" onclick=\\'P.fcSet("'+f.id+'","wrong")\\'>✗ خاطئ</button>'+
+       '<button type="button" onclick=\\'P.fcSet("'+f.id+'","partial")\\'>◐ جزئي</button>')+
+    '</div></div>'}).join('')||'<p class="meta">لا توقعات مسجّلة.</p>'},
+ fcSet:function(id,outcome){
+  fetch('/api/forecast',{method:'POST',body:JSON.stringify({id:id,outcome:outcome})}).then(r=>r.json()).then(function(d){
+   if(!d.ok){P.toast('⚠ '+(d.err||'خطأ'));return}
+   var f=((P.meta&&P.meta.forecasts)||[]).filter(function(x){return x.id===id})[0];
+   if(f){f.outcome=d.outcome;f.resolvedOn=d.resolvedOn}
+   P.renderFc();P.toast(outcome?'✓ أُغلق التوقع — اضغط «حفظ ونشر» لتحديث الموقع':'↺ أُعيد فتح التوقع (غير محفوظ بعد)')})}
 };
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
 var q=document.getElementById('q'),risk=document.getElementById('risk'),country=document.getElementById('country');
@@ -396,6 +448,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, api_assessment(body))
             elif u.path == "/api/pages":
                 self._send(200, api_pages(body))
+            elif u.path == "/api/forecast":
+                self._send(200, api_forecast(body))
             elif u.path == "/api/save":
                 self._send(200, {"ok": True, "total": save()})
             elif u.path == "/api/publish":

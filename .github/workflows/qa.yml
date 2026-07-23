@@ -1,0 +1,22 @@
+name: Weekly Data QA
+
+# جولة نظافة بيانات أسبوعية — الاثنين 9:10 صباحًا بتوقيت الرياض
+on:
+  schedule:
+    - cron: '10 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run QA report
+        run: python pipeline/qa_report.py | tee -a "$GITHUB_STEP_SUMMARY"
