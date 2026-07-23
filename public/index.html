@@ -2662,7 +2662,7 @@ function renderChrome(){
    '<span><b>'+esc(t.brand)+'</b><span>'+esc(t.brandSub)+'</span></span></div><p>'+esc(f.about)+'</p></div>'+
   '<div><h4>'+esc(f.links)+'</h4><ul>'+ROUTES.map(function(r){
    return '<li><a href="#'+r[0]+'" data-nav>'+esc(t.nav[r[1]])+'</a></li>'}).join("")+
-   '<li><a href="https://hassanmalzubaidi-bot.github.io/NEWS/" target="_blank" rel="noopener">'+esc(f.daily)+' ↗</a></li></ul></div>'+
+   '</ul></div>'+
   '<div><h4>'+esc(f.data)+'</h4>'+
    '<p style="margin-bottom:7px"><b class="n">'+fmt(R.length)+'</b> '+esc(S.lang==="ar"?"حدثًا":"events")+'</p>'+
    '<p style="margin-bottom:7px"><b class="n">'+ENT.length+'</b> '+esc(S.lang==="ar"?"كيانًا":"entities")+'</p>'+
