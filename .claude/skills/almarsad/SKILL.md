@@ -28,7 +28,7 @@ description: >-
 | النشر | Git-backed: **كل `git push` إلى `main` = نشر تلقائي**. مجلد النشر = `public/` فقط |
 | الروتين المجدول | `trig_014AqQ6qfpuoRNYRkhVYEiZ9` — cron `0 4,16 * * *` (7ص/7م الرياض)، نموذج نشر مباشر — **الوحيد المفعّل** |
 | حصاد Actions | `.github/workflows/fetch_news.yml` — cron `30 4,16 * * *` (7:30ص/7:30م الرياض)، يودع الحصاد في `main` (طبقة احتياط) |
-| لوحة NEWS الشقيقة | https://hassanmalzubaidi-bot.github.io/NEWS/ — لوحة التوتر اليومية (مستودع `hassanmalzubaidi-bot/NEWS`)، مرتبطة من تذييل المرصد |
+| لوحة NEWS الشقيقة | مستودع `hassanmalzubaidi-bot/NEWS` — لوحة التوتر اليومية في `docs/`. **رابطها من التذييل أُزيل مؤقتًا** (GitHub Pages غير مفعّلة → 404). **لا تُعِد الرابط** إلا بعد تفعيل Pages (إعدادات مستودع NEWS → Pages → Deploy from branch → `main` → `/docs`) والتحقق من أن https://hassanmalzubaidi-bot.github.io/NEWS/ يستجيب — عندها أعد مفتاح `footer.daily` للقاموسين ar/en وسطر الرابط في `footerGrid` |
 
 مجلدات النشر: `public/` منشور للجمهور · `pipeline/` و`.claude/` وكل ما عداه **خارج النشر** (لا يصله الجمهور).
 
@@ -153,7 +153,7 @@ python pipeline/admin.py         # أو نقر مزدوج على admin.bat في 
 
 | # | التغيير | أين |
 |---|---|---|
-| 1 | **ربط الموقعين**: رابط «لوحة التوتر الجيوسياسي اليومية ↗» في عمود «أقسام الموقع» بتذييل المرصد، بنص مترجم (`footer.daily` في قاموسي ar/en داخل `public/index.html`) يشير إلى https://hassanmalzubaidi-bot.github.io/NEWS/ | PR #1 — مدموج |
+| 1 | **ربط الموقعين**: رابط «لوحة التوتر الجيوسياسي اليومية ↗» في عمود «أقسام الموقع» بتذييل المرصد، بنص مترجم (`footer.daily` في قاموسي ar/en داخل `public/index.html`) يشير إلى https://hassanmalzubaidi-bot.github.io/NEWS/ | PR #1 — مدموج، **ثم أزال الأدمن الرابط لاحقًا في اليوم نفسه** لأن Pages غير مفعّلة في NEWS والرابط يعطي 404 (انظر «لوحة NEWS الشقيقة» أعلاه لشروط إعادته) |
 | 2 | **رابط عكسي** من لوحة NEWS إلى المرصد: في قالب `dashboard_bot.py` (فيتجدد مع كل توليد) وفي `docs/index.html` و`docs/archive.html` المنشورين | NEWS PR #36 — **ما زال مفتوحًا بانتظار الدمج** |
 | 3 | **سير عمل الحصاد** `fetch_news.yml` + رفع تجاهل `raw_items.json` + توثيق في `run_daily.md` وREADME | PR #2 — مدموج |
 | 4 | **توحيد الروتينات**: اكتُشف روتين مكرر أُنشئ في الجلسة نفسها (`trig_01DSE…` على 8ص/8م) فحُذف؛ بقي `trig_014Aq…` وحده | claude.ai Routines |
