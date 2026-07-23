@@ -70,6 +70,11 @@ def main():
     data["rows"].sort(key=lambda r: r[0])
     total = len(data["rows"])
 
+    # حدّث تاريخ «آخر تحديث للبيانات» ليعكس أحدث حدث فعلي (وإلا يظل عالقًا)
+    if data["rows"]:
+        d = max(r[0] for r in data["rows"])
+        data["generated"] = f"20{d[0:2]}-{d[2:4]}-{d[4:6]}"
+
     if added:
         payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
         html = html[:m.start(2)] + payload + html[m.end(2):]
