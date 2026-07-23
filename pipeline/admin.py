@@ -123,7 +123,7 @@ def api_list(q):
     rows = rows[(page - 1) * per: page * per]
     return {"total": total, "page": page, "per": per, "dirty": STATE["dirty"],
             "all": len(d["rows"]), "nat": d["nat"], "rn": RN, "sc": SC,
-            "reports": d.get("reports", {}),
+            "reports": d.get("reports", {}), "hidden": d.get("hidden", []), "pages": PAGES,
             "months": sorted({dt_iso(r[0])[:7] for r in d["rows"]}, reverse=True),
             "rows": [row_view(i, r) for i, r in rows]}
 
@@ -181,6 +181,21 @@ def api_assessment(body):
     return {"ok": True, "dirty": STATE["dirty"], "saved": bool(text), "month": month}
 
 
+PAGES = [("/dashboard", "لوحة المؤشرات"), ("/report", "التقرير التحليلي"), ("/atlas", "الأطلس"),
+         ("/explorer", "المستكشف"), ("/hotspots", "بؤر التوتر"), ("/actors", "الفاعلون"),
+         ("/reports", "التقارير"), ("/forecasts", "سجل التوقعات"), ("/methodology", "المنهجية"),
+         ("/about", "عن المرصد"), ("/contact", "اتصل بنا")]
+
+
+def api_pages(body):
+    """ضبط الصفحات المخفية عن العامة: body['hidden'] = قائمة مسارات مخفية."""
+    valid = {p for p, _ in PAGES}
+    hidden = [str(p) for p in body.get("hidden", []) if str(p) in valid]
+    STATE["data"]["hidden"] = hidden
+    STATE["dirty"] += 1
+    return {"ok": True, "dirty": STATE["dirty"], "hidden": hidden}
+
+
 PAGE = """<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>لوحة أدمن — مرصد الشرق الأوسط</title><style>
@@ -210,6 +225,7 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
 <button onclick="P.go(1)">تصفية</button>
 <span id="stats"></span>
 <button onclick="P.save()">💾 حفظ</button>
+<button onclick="P.openPages()">👁️ الصفحات</button>
 <button onclick="P.openAssess()">✍️ التقييم التحليلي</button>
 <button class="p" onclick="P.publish()">🚀 حفظ ونشر</button>
 </header><main id="list"></main>
@@ -222,6 +238,13 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
 <p class="meta" style="margin:0">يُحفظ للشهر المختار ويحلّ محلّ السقالة في صفحة «التقارير». لمسحه: افرغ النص واحفظ.</p>
 <div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">إغلاق</button>
 <button class="p" value="ok" onclick="P.saveAssess(event)">حفظ التقييم</button></div>
+</form></dialog>
+<dialog id="pdlg"><form method="dialog" style="display:grid;gap:10px;min-width:min(460px,92vw)">
+<h3 style="margin:0">👁️ التحكم في الصفحات</h3>
+<p class="meta" style="margin:0">أوقف تشغيل أي صفحة لإخفائها عن العامة (يُخفى رابطها ويُمنع الوصول المباشر). الرئيسية دائمًا ظاهرة.</p>
+<div id="pgList" style="display:grid;gap:6px;max-height:52vh;overflow:auto"></div>
+<div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">إغلاق</button>
+<button class="p" value="ok" onclick="P.savePages(event)">حفظ</button></div>
 </form></dialog>
 <div class="pager"><button onclick="P.go(P.page-1)">السابق</button><span id="pg"></span><button onclick="P.go(P.page+1)">التالي</button></div>
 <dialog id="dlg"><form method="dialog" id="f">
@@ -294,7 +317,21 @@ var P={page:1,meta:null,
    by:document.getElementById('aBy').value,date:new Date().toISOString().slice(0,10)};
   fetch('/api/assessment',{method:'POST',body:JSON.stringify(body)}).then(r=>r.json()).then(function(d){
    document.getElementById('adlg').close();
-   P.toast(d.saved?'✓ حُفظ التقييم لشهر '+d.month+' (اضغط «حفظ ونشر» لإظهاره)':'✓ مُسح التقييم');P.go(P.page)})}
+   P.toast(d.saved?'✓ حُفظ التقييم لشهر '+d.month+' (اضغط «حفظ ونشر» لإظهاره)':'✓ مُسح التقييم');P.go(P.page)})},
+ openPages:function(){
+  var pages=(P.meta&&P.meta.pages)||[], hidden=(P.meta&&P.meta.hidden)||[];
+  document.getElementById('pgList').innerHTML=pages.map(function(p){
+   var on=hidden.indexOf(p[0])<0;
+   return '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:8px;padding:8px 12px">'+
+    '<span>'+p[1]+' <span style="color:#94a3b8;font-size:12px">'+p[0]+'</span></span>'+
+    '<input type="checkbox" data-path="'+p[0]+'"'+(on?' checked':'')+' style="width:18px;height:18px"></label>'}).join('');
+  document.getElementById('pdlg').showModal();},
+ savePages:function(ev){ev.preventDefault();
+  var boxes=document.querySelectorAll('#pgList input[type=checkbox]'), hidden=[];
+  Array.prototype.forEach.call(boxes,function(b){if(!b.checked)hidden.push(b.getAttribute('data-path'))});
+  fetch('/api/pages',{method:'POST',body:JSON.stringify({hidden:hidden})}).then(r=>r.json()).then(function(d){
+   document.getElementById('pdlg').close();
+   P.toast('✓ '+(d.hidden.length?d.hidden.length+' صفحة مخفية':'كل الصفحات ظاهرة')+' (اضغط «حفظ ونشر»)');P.go(P.page)})}
 };
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
 var q=document.getElementById('q'),risk=document.getElementById('risk'),country=document.getElementById('country');
@@ -337,6 +374,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, api_feature(body))
             elif u.path == "/api/assessment":
                 self._send(200, api_assessment(body))
+            elif u.path == "/api/pages":
+                self._send(200, api_pages(body))
             elif u.path == "/api/save":
                 self._send(200, {"ok": True, "total": save()})
             elif u.path == "/api/publish":

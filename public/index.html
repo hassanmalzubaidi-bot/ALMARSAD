@@ -578,6 +578,7 @@ footer a:hover{color:var(--brand)}
   </div>
 </div></header>
 
+<form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden><input type="text" name="name"/><input type="email" name="email"/><input type="text" name="org"/><input type="text" name="subject"/><textarea name="message"></textarea></form>
 <main id="app"></main>
 
 <footer><div class="w">
@@ -1561,17 +1562,19 @@ function pageContact(){
  var t=T(),c=t.contact;
  return pageHead({eyebrow:c.eyebrow,h2:c.h2,lede:c.lede})+
  '<section style="padding-top:26px"><div class="w"><div class="split" style="align-items:start">'+
-  '<form class="card" id="cf" novalidate>'+
-   '<label class="field"><span>'+esc(c.name)+'</span><input class="inp" required></label>'+
+  '<form class="card" id="cf" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>'+
+   '<input type="hidden" name="form-name" value="contact">'+
+   '<p style="display:none"><label><input name="bot-field"></label></p>'+
+   '<label class="field"><span>'+esc(c.name)+'</span><input class="inp" name="name" required></label>'+
    '<div class="grid g2" style="gap:0 14px">'+
-    '<label class="field"><span>'+esc(c.email)+'</span><input class="inp" type="email" required></label>'+
-    '<label class="field"><span>'+esc(c.org)+'</span><input class="inp"></label></div>'+
-   '<label class="field"><span>'+esc(c.subject)+'</span><input class="inp"></label>'+
-   '<label class="field"><span>'+esc(c.msg)+'</span><textarea class="inp"></textarea></label>'+
+    '<label class="field"><span>'+esc(c.email)+'</span><input class="inp" name="email" type="email" required></label>'+
+    '<label class="field"><span>'+esc(c.org)+'</span><input class="inp" name="org"></label></div>'+
+   '<label class="field"><span>'+esc(c.subject)+'</span><input class="inp" name="subject"></label>'+
+   '<label class="field"><span>'+esc(c.msg)+'</span><textarea class="inp" name="message"></textarea></label>'+
    '<button class="btn p" type="submit" style="width:100%">'+esc(c.send)+'</button>'+
    '<p id="cm" class="muted hide" style="margin-top:13px"></p></form>'+
   '<div class="card"><h3>'+esc(c.info)+'</h3>'+
-   '<div class="check" style="margin-top:16px">'+svg("mail",18)+'<span class="n">contact@observatory.example</span></div>'+
+   '<div class="check" style="margin-top:16px">'+svg("mail",18)+'<span class="n">راسلنا عبر النموذج المجاور</span></div>'+
    '<div class="check">'+svg("globe",18)+'<span>'+esc(S.lang==="ar"?"الرياض، السعودية":"Riyadh, Saudi Arabia")+'</span></div>'+
    '<div class="check">'+svg("info",18)+'<span>'+esc(t.footer.upd)+': <b class="n">'+GEN+'</b></span></div></div>'+
  '</div></div></section>';
@@ -2569,7 +2572,7 @@ function renderChrome(){
  el("langBtn").textContent=t.other;
  el("themeBtn").innerHTML=svg(S.theme==="dark"?"sun":"moon",19);
  var base="/"+(S.route.split("/")[1]||"");
- el("nav").innerHTML=ROUTES.map(function(r){
+ el("nav").innerHTML=ROUTES.filter(function(r){return (RAW.hidden||[]).indexOf(r[0])<0}).map(function(r){
   return '<a href="#'+r[0]+'" data-nav class="'+(base===r[0]?"on":"")+'">'+esc(t.nav[r[1]])+'</a>'}).join("");
  var f=t.footer;
  el("footerGrid").innerHTML=
@@ -2583,7 +2586,7 @@ function renderChrome(){
    '<p style="margin-bottom:7px"><b class="n">'+ENT.length+'</b> '+esc(S.lang==="ar"?"كيانًا":"entities")+'</p>'+
    '<p style="margin-bottom:7px">'+esc(f.upd)+': <b class="n">'+GEN+'</b></p>'+
    '<p style="font-size:12px">'+esc(t.bounds)+'</p></div>'+
-  '<div><h4>'+esc(f.contact)+'</h4><p class="n" style="margin-bottom:8px">contact@observatory.example</p>'+
+  '<div><h4>'+esc(f.contact)+'</h4><p class="n" style="margin-bottom:8px">راسلنا عبر النموذج المجاور</p>'+
    '<a class="btn g sm" href="#/contact" data-nav style="margin-top:10px">'+esc(t.nav.contact)+'</a></div>';
  el("footerCopy").innerHTML='<span><span class="n">2026</span> © '+esc(t.brand)+'. '+esc(f.rights)+'</span><span>'+esc(f.src)+'</span>';
 }
@@ -2591,6 +2594,7 @@ function renderChrome(){
 function render(){
  applyProv();
  var p=S.route.split("/").filter(Boolean), html;
+ if(p.length&&(RAW.hidden||[]).indexOf("/"+p[0])>=0){S.route="/";p=[];}
  if(p.length===0) html=pageHome();
  else if(p[0]==="dashboard") html=pageDash();
  else if(p[0]==="atlas") html=pageAtlas();
@@ -2746,6 +2750,12 @@ function initZoom(){
 
 function bind(){
  var q=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+ var cf=el("cf");
+ if(cf){cf.addEventListener("submit",function(e){e.preventDefault();
+   var b=new URLSearchParams(new FormData(cf)).toString(), cm=el("cm");
+   fetch("/",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b})
+    .then(function(){cm.textContent=S.lang==="ar"?"\u2713 \u0648\u0635\u0644\u062a \u0631\u0633\u0627\u0644\u062a\u0643\u060c \u0634\u0643\u0631\u064b\u0627 \u0644\u0643.":"\u2713 Message sent, thank you.";cm.classList.remove("hide");cf.reset();})
+    .catch(function(){cm.textContent=S.lang==="ar"?"\u062a\u0639\u0630\u0651\u0631 \u0627\u0644\u0625\u0631\u0633\u0627\u0644\u060c \u062d\u0627\u0648\u0644 \u0644\u0627\u062d\u0642\u064b\u0627.":"Send failed, try later.";cm.classList.remove("hide");});});}
  var re=function(keep){var pos=null,f=document.activeElement,id=f&&f.id;
    if(f&&f.selectionStart!=null)pos=f.selectionStart;
    render();
