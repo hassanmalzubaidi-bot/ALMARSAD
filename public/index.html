@@ -1981,11 +1981,16 @@ function actorNarrative(i,s){
 function actorTimeline(i,s){
   var t=T(), a=t.act;
   var MIL={"عسكري":1,"أمني":1,"نووي":1};
-  /* الأبرز: الأشدّ خطورةً أولًا (حرج=0)، والأحدث عند التعادل — ثم تُعرض زمنيًا (الأحدث أعلى) */
-  var rows=s.rows.slice()
-    .sort(function(x,y){return (x[8]-y[8]) || (x[0]<y[0]?1:(x[0]>y[0]?-1:0))})
-    .slice(0,6)
-    .sort(function(x,y){return x[0]<y[0]?1:(x[0]>y[0]?-1:0)});
+  var isMil=function(r){return nats(r[6]).some(function(n){return MIL[n]})};
+  var bySev=function(x,y){return (x[8]-y[8]) || (x[0]<y[0]?1:(x[0]>y[0]?-1:0))};
+  /* الأبرز مع توازن العمودين: حدّان على الأقل من كل جانب (إن وُجدا)،
+     والباقي يُكمَل من الأشدّ خطورةً — ثم تُعرض زمنيًا (الأحدث أعلى) */
+  var milR=s.rows.filter(isMil).sort(bySev);
+  var polR=s.rows.filter(function(r){return !isMil(r)}).sort(bySev);
+  var rows=milR.slice(0,2).concat(polR.slice(0,2));
+  var rest=milR.slice(2).concat(polR.slice(2)).sort(bySev);
+  while(rows.length<6&&rest.length) rows.push(rest.shift());
+  rows.sort(function(x,y){return x[0]<y[0]?1:(x[0]>y[0]?-1:0)});
   if(!rows.length) return "";
   var items=rows.map(function(r){
     var mil=nats(r[6]).some(function(n){return MIL[n]});
