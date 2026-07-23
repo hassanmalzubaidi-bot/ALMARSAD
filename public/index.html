@@ -164,14 +164,12 @@ h3{font-size:18px;font-weight:700}
 .zctl button:hover{background:var(--bg2)}
 .featbar{display:flex;align-items:center;gap:12px;overflow:hidden;padding:10px 16px;margin:12px auto 0;max-width:1160px;border:1px solid #eab30866;background:var(--card);border-radius:12px}
 .featbar .ft{font-weight:700;color:#b45309;white-space:nowrap;font-size:13.5px;flex:0 0 auto}
-.featbar .fmar{flex:1 1 auto;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
-.featbar .ftrack{display:flex;width:max-content;animation:fscroll 48s linear infinite}
-.featbar:hover .ftrack{animation-play-state:paused}
-@keyframes fscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){.featbar .ftrack{animation:none;transform:none}}
-.featbar .fitem{border:1px solid var(--line);background:var(--bg2);border-radius:99px;padding:6px 14px;margin-inline-start:12px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap;color:inherit}
+.featbar .frot{flex:1 1 auto;position:relative;height:32px;overflow:hidden}
+.featbar .fitem{position:absolute;inset-inline-start:0;top:50%;transform:translateY(calc(-50% + 8px));opacity:0;transition:opacity .5s ease,transform .5s ease;pointer-events:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--line);background:var(--bg2);border-radius:99px;padding:6px 14px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap;color:inherit}
+.featbar .fitem.on{opacity:1;transform:translateY(-50%);pointer-events:auto}
 .featbar .fitem b{color:#b45309}
 .featbar .fitem:hover{border-color:#eab308;background:#fff7e6}
+@media (prefers-reduced-motion:reduce){.featbar .fitem{transition:opacity .01s}}
 .clu circle{stroke:var(--card);cursor:pointer}
 .clu text{fill:#fff;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:system-ui,sans-serif}
 .tlbar{display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
@@ -2610,10 +2608,18 @@ function render(){
  if(FE.length){
   FE.sort(function(a,b){return a[0]<b[0]?1:-1});
   var fb=document.createElement("div");fb.className="featbar";
-  var fitems=FE.slice(0,8).map(function(r){return '<button type="button" class="fitem" data-i="'+IDX.get(r)+'"><b>'+dt(r[0])+'</b> \u00b7 '+esc(ENT[r[1]])+' \u2014 '+esc(String(r[9]).slice(0,80))+'</button>'}).join("");
+  var fitems=FE.slice(0,8).map(function(r,i){return '<button type="button" class="fitem'+(i===0?' on':'')+'" data-i="'+IDX.get(r)+'"><b>'+dt(r[0])+'</b> \u00b7 '+esc(ENT[r[1]])+' \u2014 '+esc(String(r[9]).slice(0,80))+'</button>'}).join("");
   fb.innerHTML='<span class="ft">\u2605 '+(S.lang==="ar"?"\u0623\u062d\u062f\u0627\u062b \u0628\u0627\u0631\u0632\u0629":"Featured")+'</span>'+
-   '<div class="fmar"><div class="ftrack">'+fitems+fitems+'</div></div>';
+   '<div class="frot">'+fitems+'</div>';
   var app=el("app"); app.insertBefore(fb,app.firstChild);
+  (function(){var rot=fb.querySelectorAll(".fitem"),ri=0,paused=false;
+   if(window.__frot)clearInterval(window.__frot);
+   if(rot.length>1){
+    fb.addEventListener("mouseenter",function(){paused=true});
+    fb.addEventListener("mouseleave",function(){paused=false});
+    window.__frot=setInterval(function(){if(paused)return;
+     rot[ri].classList.remove("on");ri=(ri+1)%rot.length;rot[ri].classList.add("on")},4200);
+   }})();
   Array.prototype.forEach.call(fb.querySelectorAll(".fitem"),function(b){
    b.addEventListener("click",function(){var r=ALL[+b.getAttribute("data-i")];
     if(r&&typeof detail==="function")detail(r)})});
