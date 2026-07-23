@@ -2,5 +2,5 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 set PYTHONIOENCODING=utf-8
-python pipelinedmin.py
+python "%~dp0pipeline\admin.py"
 pause
