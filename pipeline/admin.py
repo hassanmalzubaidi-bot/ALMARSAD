@@ -22,10 +22,19 @@ EV_RE = re.compile(r'(<script id="EV" type="application/json">)(.*?)(</script>)'
 STATE = {"data": None, "dirty": 0}
 
 
+def _sig():
+    """توقيع بنيوي لبيانات EV على القرص — لكشف أي تغيّر خارجي (أتمتة/تعديل آخر)."""
+    d = json.loads(EV_RE.search(open(SITE, encoding="utf-8").read()).group(2))
+    return (len(d["rows"]), len(d.get("profiles") or {}), len(d.get("dossiers") or []),
+            tuple(sorted((d.get("reports") or {}).keys())),
+            tuple(d.get("hidden") or []), len(d["ents"]))
+
+
 def load():
     html = open(SITE, encoding="utf-8").read()
     STATE["data"] = json.loads(EV_RE.search(html).group(2))
     STATE["dirty"] = 0
+    STATE["sig"] = _sig()
 
 
 def save():
@@ -40,10 +49,17 @@ def save():
     chk = json.loads(EV_RE.search(open(SITE, encoding="utf-8").read()).group(2))
     assert len(chk["rows"]) == total and len(chk["ents"]) == len(chk["kinds"])
     STATE["dirty"] = 0
+    STATE["sig"] = _sig()
     return total
 
 
 def publish():
+    # حارس ضد البيانات القديمة: إن تغيّر الموقع على القرص منذ فتح اللوحة، ارفض النشر
+    # (منعًا لكتابة لقطة قديمة فوق محتوى أحدث — كما حدث في 2026-07-23).
+    if _sig() != STATE.get("sig"):
+        return {"ok": False, "stale": True, "total": len(STATE["data"]["rows"]),
+                "msg": "⚠️ تغيّر محتوى الموقع منذ فتحك اللوحة (تحديث تلقائي أو تعديل آخر). "
+                       "أعد تشغيل admin.bat لتحميل أحدث البيانات ثم أعد تعديلك — منعًا لمسح محتوى أحدث."}
     total = save()
     msg = "إدارة المحتوى: تعديلات الأدمن " + time.strftime("%Y-%m-%d %H:%M")
     out = []
@@ -101,6 +117,10 @@ def ent_index(name):
 
 
 def api_list(q):
+    # حمّل أحدث بيانات القرص عند كل فتح/تحديث للوحة (ما لم تكن هناك تعديلات معلّقة)
+    # حتى تعكس اللوحة دائمًا آخر محتوى منشور وتُعاد مزامنة توقيع الحارس.
+    if not STATE["dirty"]:
+        load()
     d = STATE["data"]
     rows = list(enumerate(d["rows"]))
     term = (q.get("q", [""])[0] or "").strip()
