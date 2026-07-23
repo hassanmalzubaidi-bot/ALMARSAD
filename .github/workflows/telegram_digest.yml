@@ -10,6 +10,10 @@ on:
         description: 'diagnose (معاينة دون إرسال) أو send'
         required: false
         default: 'send'
+      chat_id:
+        description: 'معرّف محادثة اختياري للاختبار اليدوي (يغني عن سر CHAT_ID)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -26,7 +30,9 @@ jobs:
       - run: pip install requests
       - name: Send digest
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          # يقبل الاسمين: TELEGRAM_TOKEN أو TK (الاسم الذي أضافه المالك)
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN || secrets.TK }}
+          # سر CHAT_ID للجدولة الليلية، أو مُدخل يدوي للاختبار
+          CHAT_ID: ${{ secrets.CHAT_ID || github.event.inputs.chat_id }}
           DIGEST_MODE: ${{ github.event.inputs.mode || 'send' }}
         run: python pipeline/telegram_digest.py
