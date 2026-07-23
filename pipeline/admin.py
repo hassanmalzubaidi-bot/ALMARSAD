@@ -123,6 +123,8 @@ def api_list(q):
     rows = rows[(page - 1) * per: page * per]
     return {"total": total, "page": page, "per": per, "dirty": STATE["dirty"],
             "all": len(d["rows"]), "nat": d["nat"], "rn": RN, "sc": SC,
+            "reports": d.get("reports", {}),
+            "months": sorted({dt_iso(r[0])[:7] for r in d["rows"]}, reverse=True),
             "rows": [row_view(i, r) for i, r in rows]}
 
 
@@ -162,6 +164,23 @@ def api_feature(body):
     return {"ok": True, "dirty": STATE["dirty"], "مميز": bool(r[14])}
 
 
+def api_assessment(body):
+    """كتابة/تعديل/مسح التقييم التحليلي المكتوب لشهر (RAW.reports[month])."""
+    month = str(body.get("month", "")).strip()
+    text = str(body.get("text", "")).strip()
+    by = str(body.get("by", "")).strip()
+    date = str(body.get("date", "")).strip()
+    if not month:
+        return {"ok": False, "err": "لا شهر"}
+    reports = STATE["data"].setdefault("reports", {})
+    if text:
+        reports[month] = {"text": text, "by": by or "محلل المرصد", "date": date}
+    else:
+        reports.pop(month, None)
+    STATE["dirty"] += 1
+    return {"ok": True, "dirty": STATE["dirty"], "saved": bool(text), "month": month}
+
+
 PAGE = """<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>لوحة أدمن — مرصد الشرق الأوسط</title><style>
@@ -191,8 +210,19 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
 <button onclick="P.go(1)">تصفية</button>
 <span id="stats"></span>
 <button onclick="P.save()">💾 حفظ</button>
+<button onclick="P.openAssess()">✍️ التقييم التحليلي</button>
 <button class="p" onclick="P.publish()">🚀 حفظ ونشر</button>
 </header><main id="list"></main>
+<dialog id="adlg"><form method="dialog" id="af" style="display:grid;gap:10px;min-width:min(680px,92vw)">
+<h3 style="margin:0">✍️ التقييم التحليلي (يكتبه المحلل)</h3>
+<div class="grid2"><div><label>الشهر</label><select id="aMonth" onchange="P.loadAssess()"></select></div>
+<div><label>اسم المحلل (يظهر في التوقيع)</label><input id="aBy" placeholder="محلل المرصد"></div></div>
+<div><label>نص التقييم — تقديرات مصاغة بحيث يمكن مخالفتها، ودرجة ثقة صريحة، ومؤشرات تُبطلها</label>
+<textarea id="aText" rows="12" placeholder="اكتب هنا... (افصل الفقرات بسطر فارغ)"></textarea></div>
+<p class="meta" style="margin:0">يُحفظ للشهر المختار ويحلّ محلّ السقالة في صفحة «التقارير». لمسحه: افرغ النص واحفظ.</p>
+<div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">إغلاق</button>
+<button class="p" value="ok" onclick="P.saveAssess(event)">حفظ التقييم</button></div>
+</form></dialog>
 <div class="pager"><button onclick="P.go(P.page-1)">السابق</button><span id="pg"></span><button onclick="P.go(P.page+1)">التالي</button></div>
 <dialog id="dlg"><form method="dialog" id="f">
 <input type="hidden" name="i">
@@ -250,7 +280,21 @@ var P={page:1,meta:null,
  publish:function(){if(!confirm('حفظ ودفع التعديلات — سينشر Netlify الموقع المحدّث. متابعة؟'))return;
   P.toast('🚀 جارٍ النشر…');
   fetch('/api/publish',{method:'POST'}).then(r=>r.json()).then(function(d){
-   P.toast(d.ok?'✓ نُشر — Netlify سيحدّث الموقع خلال دقيقة':'⚠ تعذّر النشر — راجع الطرفية');P.go(P.page)})}
+   P.toast(d.ok?'✓ نُشر — Netlify سيحدّث الموقع خلال دقيقة':'⚠ تعذّر النشر — راجع الطرفية');P.go(P.page)})},
+ openAssess:function(){
+  var sel=document.getElementById('aMonth'), ms=(P.meta&&P.meta.months)||[];
+  sel.innerHTML=ms.map(function(m){return '<option value="'+m+'">'+m+'</option>'}).join('');
+  P.loadAssess(); document.getElementById('adlg').showModal();},
+ loadAssess:function(){
+  var m=document.getElementById('aMonth').value, rep=(P.meta&&P.meta.reports&&P.meta.reports[m])||null;
+  document.getElementById('aText').value=rep?rep.text:'';
+  document.getElementById('aBy').value=rep?(rep.by||''):'';},
+ saveAssess:function(ev){ev.preventDefault();
+  var body={month:document.getElementById('aMonth').value,text:document.getElementById('aText').value,
+   by:document.getElementById('aBy').value,date:new Date().toISOString().slice(0,10)};
+  fetch('/api/assessment',{method:'POST',body:JSON.stringify(body)}).then(r=>r.json()).then(function(d){
+   document.getElementById('adlg').close();
+   P.toast(d.saved?'✓ حُفظ التقييم لشهر '+d.month+' (اضغط «حفظ ونشر» لإظهاره)':'✓ مُسح التقييم');P.go(P.page)})}
 };
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
 var q=document.getElementById('q'),risk=document.getElementById('risk'),country=document.getElementById('country');
@@ -291,6 +335,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, api_delete(body))
             elif u.path == "/api/feature":
                 self._send(200, api_feature(body))
+            elif u.path == "/api/assessment":
+                self._send(200, api_assessment(body))
             elif u.path == "/api/save":
                 self._send(200, {"ok": True, "total": save()})
             elif u.path == "/api/publish":
