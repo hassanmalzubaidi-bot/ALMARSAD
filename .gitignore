@@ -1,5 +1,5 @@
 # ملفات العمل المؤقتة لخط الأنابيب
-pipeline/raw_items.json
+# (raw_items.json وfetch_meta.json يودعهما سير عمل الحصاد الآلي — لا تتجاهلهما)
 pipeline/classified.json
 pipeline/__pycache__/
 *.pyc
