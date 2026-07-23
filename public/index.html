@@ -170,8 +170,9 @@ h3{font-size:18px;font-weight:700}
 .featbar .fitem b{color:#b45309}
 .featbar .fitem:hover{border-color:#eab308;background:#fff7e6}
 @media (prefers-reduced-motion:reduce){.featbar .fitem{transition:opacity .01s}}
-.clu circle{stroke:var(--card);cursor:pointer}
-.clu text{fill:#fff;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:system-ui,sans-serif}
+.clu circle{fill-opacity:.14;stroke-opacity:.92;cursor:pointer}
+.clu:hover circle{fill-opacity:.24}
+.clu text{font-weight:800;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:system-ui,sans-serif;paint-order:stroke;stroke:var(--card);stroke-linejoin:round}
 .tlbar{display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 .tlbar input[type=range]{flex:1;accent-color:#0f766e}
 .tlbar button{width:36px;height:30px;border:1px solid var(--line);background:var(--bg2);border-radius:8px;cursor:pointer;font-size:13px}
@@ -2662,10 +2663,10 @@ function initZoom(){
     var cx=0,cy=0,sev=5;
     g.forEach(function(a){cx+=a[0];cy+=a[1];if(a[2][8]<sev)sev=a[2][8]});
     cx/=g.length;cy/=g.length;
-    var rr=(9+Math.min(14,Math.sqrt(g.length)*2.4))/zz;
+    var rr=(6.5+Math.min(11,Math.sqrt(g.length)*2))/zz;
     s+='<g class="clu" data-x="'+cx.toFixed(1)+'" data-y="'+cy.toFixed(1)+'">'+
-     '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+rr.toFixed(2)+'" fill="'+RC[sev]+'" fill-opacity=".85" stroke-width="'+(1.4/zz).toFixed(2)+'"/>'+
-     '<text x="'+cx.toFixed(1)+'" y="'+cy.toFixed(1)+'" font-size="'+(11/zz).toFixed(2)+'">'+g.length+'</text></g>'});
+     '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+rr.toFixed(2)+'" fill="'+RC[sev]+'" stroke="'+RC[sev]+'" stroke-width="'+(2/zz).toFixed(2)+'"/>'+
+     '<text x="'+cx.toFixed(1)+'" y="'+cy.toFixed(1)+'" fill="'+RC[sev]+'" stroke-width="'+(2.4/zz).toFixed(2)+'" font-size="'+(9/zz).toFixed(2)+'">'+g.length+'</text></g>'});
    var lim=Math.min(singles.length,3000);
    for(var i=0;i<lim;i++){var a=singles[i],r=a[2];
     s+='<circle class="pt'+(r[5]?' pc':'')+'" cx="'+a[0].toFixed(1)+'" cy="'+a[1].toFixed(1)+
