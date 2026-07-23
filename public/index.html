@@ -162,11 +162,16 @@ h3{font-size:18px;font-weight:700}
 .zctl{position:absolute;top:10px;inset-inline-start:10px;display:flex;flex-direction:column;gap:6px;z-index:5}
 .zctl button{width:34px;height:34px;border:1px solid var(--line);background:var(--card);color:inherit;border-radius:8px;font:600 18px/1 system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.14)}
 .zctl button:hover{background:var(--bg2)}
-.featbar{display:flex;align-items:center;gap:10px;overflow-x:auto;padding:10px 16px;margin:12px auto 0;max-width:1160px;border:1px solid #eab30866;background:var(--card);border-radius:12px}
-.featbar .ft{font-weight:700;color:#b45309;white-space:nowrap;font-size:13.5px}
-.featbar .fitem{border:1px solid var(--line);background:var(--bg2);border-radius:99px;padding:6px 14px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap;color:inherit}
+.featbar{display:flex;align-items:center;gap:12px;overflow:hidden;padding:10px 16px;margin:12px auto 0;max-width:1160px;border:1px solid #eab30866;background:var(--card);border-radius:12px}
+.featbar .ft{font-weight:700;color:#b45309;white-space:nowrap;font-size:13.5px;flex:0 0 auto}
+.featbar .fmar{flex:1 1 auto;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+.featbar .ftrack{display:flex;width:max-content;animation:fscroll 48s linear infinite}
+.featbar:hover .ftrack{animation-play-state:paused}
+@keyframes fscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.featbar .ftrack{animation:none;transform:none}}
+.featbar .fitem{border:1px solid var(--line);background:var(--bg2);border-radius:99px;padding:6px 14px;margin-inline-start:12px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap;color:inherit}
 .featbar .fitem b{color:#b45309}
-.featbar .fitem:hover{border-color:#eab308}
+.featbar .fitem:hover{border-color:#eab308;background:#fff7e6}
 .clu circle{stroke:var(--card);cursor:pointer}
 .clu text{fill:#fff;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:system-ui,sans-serif}
 .tlbar{display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
@@ -2605,8 +2610,9 @@ function render(){
  if(FE.length){
   FE.sort(function(a,b){return a[0]<b[0]?1:-1});
   var fb=document.createElement("div");fb.className="featbar";
+  var fitems=FE.slice(0,8).map(function(r){return '<button type="button" class="fitem" data-i="'+IDX.get(r)+'"><b>'+dt(r[0])+'</b> \u00b7 '+esc(ENT[r[1]])+' \u2014 '+esc(String(r[9]).slice(0,80))+'</button>'}).join("");
   fb.innerHTML='<span class="ft">\u2605 '+(S.lang==="ar"?"\u0623\u062d\u062f\u0627\u062b \u0628\u0627\u0631\u0632\u0629":"Featured")+'</span>'+
-   FE.slice(0,8).map(function(r){return '<button type="button" class="fitem" data-i="'+IDX.get(r)+'"><b>'+dt(r[0])+'</b> \u00b7 '+esc(ENT[r[1]])+' \u2014 '+esc(String(r[9]).slice(0,80))+'</button>'}).join("");
+   '<div class="fmar"><div class="ftrack">'+fitems+fitems+'</div></div>';
   var app=el("app"); app.insertBefore(fb,app.firstChild);
   Array.prototype.forEach.call(fb.querySelectorAll(".fitem"),function(b){
    b.addEventListener("click",function(){var r=ALL[+b.getAttribute("data-i")];
