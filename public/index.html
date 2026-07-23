@@ -189,6 +189,18 @@ h3{font-size:18px;font-weight:700}
 .tbl tr.r{cursor:pointer;transition:background .15s}
 .tbl tr.r:hover{background:var(--bg2)}
 .rk{display:inline-block;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap}
+/* ── الخط الزمني ثنائي العمود لملف الفاعل ── */
+.tlx{max-height:470px;overflow-y:auto;margin-top:4px;padding-inline-end:4px;scrollbar-width:thin}
+.tlxr{display:grid;grid-template-columns:1fr 30px 1fr;align-items:stretch}
+.tlxhead{font-size:12.5px;font-weight:800;text-align:center;position:sticky;top:0;background:var(--card);z-index:2;padding:6px 0;border-bottom:1px solid var(--line)}
+.tlxs{position:relative;display:flex;justify-content:center}
+.tlxs::before{content:"";position:absolute;top:0;bottom:0;width:2px;background:var(--line)}
+.tlxs i{width:11px;height:11px;border-radius:50%;border:2px solid var(--card);margin-top:17px;position:relative;z-index:1;flex:none;box-shadow:0 0 0 1px var(--line)}
+.tlxcard{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:7px 0;text-align:center;transition:border-color .15s}
+.tlxcard:hover{border-color:var(--accent)}
+.tlxd{font-size:11.5px;font-weight:700;letter-spacing:.02em}
+.tlxcard p{margin:5px 0 0;font-size:12.5px;line-height:1.75;color:var(--ink)}
+@media(max-width:640px){.tlxr{grid-template-columns:1fr 22px 1fr}.tlxcard{padding:8px 9px}.tlxcard p{font-size:11.5px}}
 .cl2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .wrapx{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--sh);overflow-x:auto}
 .ecards{display:none}
@@ -724,6 +736,7 @@ var I18N={
     thIdx:"مؤشر التهديد", base:"خط الأساس", events:"حدثًا", severe:"حرج ومرتفع جدًا", linksN:"فاعلًا مرتبطًا",
     back:"→ كل الفاعلين", profileLede:"ملف مولّد حسابيًا من الأحداث المرصودة.",
     narH:"الوصف المحسوب", computed:"مولّد من البيانات",
+    tlH:"الخط الزمني للأحداث", tlMil:"عنيف وعسكري", tlPol:"سياسي واستراتيجي", tlNote:"أحدث 60 حدثًا — مرّر لرؤية المزيد",
     narNote:"كل رقم في هذه الفقرة مشتق من صفوف قاعدة البيانات. لا يوجد فيها حكم على نية ولا توقّع سلوك — هذا مجال القسم الأخير.",
     riskH:"بصمة المخاطر", riskNote:"نسبة كل درجة عند هذا الفاعل، والخط الرأسي يمثل المتوسط الإقليمي.",
     netH:"شبكة العلاقات", netNote:"عدد الأحداث التي يُذكر فيها الفاعلان معًا. الاقتران ليس تحالفًا ولا عداءً — هو ورود مشترك فقط.",
@@ -952,6 +965,7 @@ var I18N={
     thIdx:"Threat index", base:"baseline", events:"events", severe:"critical & very high", linksN:"linked actors",
     back:"→ All actors", profileLede:"A profile computed from the recorded events.",
     narH:"Computed description", computed:"generated from data",
+    tlH:"Event timeline", tlMil:"Violent & military", tlPol:"Political & strategic", tlNote:"Latest 60 events — scroll for more",
     narNote:"Every figure in this paragraph derives from database rows. It contains no judgement of intent and no behavioural forecast — that belongs to the final section.",
     riskH:"Risk signature", riskNote:"Share of each level for this actor; the vertical line marks the regional mean.",
     netH:"Relationship network", netNote:"Number of events in which both actors are mentioned together. Co-occurrence is neither alliance nor hostility — only joint appearance.",
@@ -1963,6 +1977,32 @@ function actorNarrative(i,s){
   return out;
 }
 
+/* الخط الزمني ثنائي العمود: عنيف/عسكري مقابل سياسي/استراتيجي على عمود فقري مركزي */
+function actorTimeline(i,s){
+  var t=T(), a=t.act;
+  var MIL={"عسكري":1,"أمني":1,"نووي":1};
+  var rows=s.rows.slice().sort(function(x,y){return x[0]<y[0]?1:(x[0]>y[0]?-1:0)}).slice(0,60);
+  if(!rows.length) return "";
+  var items=rows.map(function(r){
+    var mil=nats(r[6]).some(function(n){return MIL[n]});
+    var city=(r[2]&&r[2]!=="عام")?r[2]:"";
+    var card='<div class="tlxcard"><div class="tlxd n" style="color:'+RC[r[8]]+'">'+dt(r[0])+(city?' · '+esc(city):'')+'</div>'+
+      '<p>'+esc(String(r[9]).slice(0,170))+'</p></div>';
+    return '<div class="tlxr">'+
+      '<div>'+(mil?card:'')+'</div>'+
+      '<div class="tlxs"><i style="background:'+RC[r[8]]+'"></i></div>'+
+      '<div>'+(mil?'':card)+'</div></div>';
+  }).join("");
+  return '<div class="card" style="margin-top:18px">'+
+   '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3>'+esc(a.tlH)+'</h3>'+
+    '<span class="tagd" style="margin-inline-start:auto">'+esc(a.tlNote)+'</span></div>'+
+   '<div class="tlx">'+
+    '<div class="tlxr tlxhead">'+
+     '<div style="color:'+RC[1]+'">🪖 '+esc(a.tlMil)+'</div><div></div>'+
+     '<div style="color:var(--accent)">🏛️ '+esc(a.tlPol)+'</div></div>'+
+    items+'</div></div>';
+}
+
 function pageActors(){
   var t=T(), a=t.act;
   var cnt={}; R.forEach(function(r){cnt[r[1]]=(cnt[r[1]]||0)+1});
@@ -2046,6 +2086,8 @@ function pageActors(){
     '<div dir="ltr" style="display:flex;align-items:flex-end;gap:2px;height:74px;margin-top:12px">'+spark+'</div>'+
     '<div dir="ltr" style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:5px">'+
      '<span>'+s.series[0].k+'</span><span>'+s.series[s.series.length-1].k+'</span></div></div>'+
+
+   actorTimeline(i,s)+
 
    '<div class="grid g2" style="margin-top:18px">'+
     '<div class="card"><h3>'+esc(a.natH)+'</h3><div class="chips" style="margin-top:12px">'+
