@@ -10,7 +10,9 @@ import config as C
 import classify as CL
 
 CLASSIFIED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "classified.json")
-ORGS = {"حماس", "حزب الله", "الحوثيون", "الناتو", "الاتحاد الأوروبي", "الأمم المتحدة", "داعش"}
+# الفاعلون غير الدوليون (أذرع إقليمية) — يُصنّفون nonstate لا org
+NONSTATE = {"حماس", "حزب الله", "الحوثيون", "داعش"}
+ORGS = {"الناتو", "الاتحاد الأوروبي", "الأمم المتحدة"}
 REG = {"البحر الأحمر", "مضيق هرمز", "الشرق الأوسط", "الخليج"}
 
 
@@ -19,7 +21,10 @@ def ent_index(data, name):
     if name in data["ents"]:
         return data["ents"].index(name)
     data["ents"].append(name)
-    data["kinds"].append("org" if name in ORGS else ("region" if name in REG else "state"))
+    kind = ("nonstate" if name in NONSTATE else
+            "org" if name in ORGS else
+            "region" if name in REG else "state")
+    data["kinds"].append(kind)
     return len(data["ents"]) - 1
 
 
