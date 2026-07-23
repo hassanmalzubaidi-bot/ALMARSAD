@@ -32,7 +32,8 @@ jobs:
         env:
           # يقبل الاسمين: TELEGRAM_TOKEN أو TK (الاسم الذي أضافه المالك)
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN || secrets.TK }}
-          # سر CHAT_ID للجدولة الليلية، أو مُدخل يدوي للاختبار
-          CHAT_ID: ${{ secrets.CHAT_ID || github.event.inputs.chat_id }}
+          # الوجهة الافتراضية: قناة المرصد العامة @AlmarsadME (معرّف علني بطبيعته —
+          # قرار المالك عدم استخدام معرّفات خاصة هنا). يمكن تجاوزه بسر CHAT_ID أو مُدخل يدوي.
+          CHAT_ID: ${{ secrets.CHAT_ID || github.event.inputs.chat_id || '@AlmarsadME' }}
           DIGEST_MODE: ${{ github.event.inputs.mode || 'send' }}
         run: python pipeline/telegram_digest.py

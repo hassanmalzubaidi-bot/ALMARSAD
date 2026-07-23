@@ -869,7 +869,7 @@ var I18N={
     info:"معلومات التواصل",sent:"هذا نموذج عرض ولا يرسل فعليًا. يُربط بالبريد عند التشغيل."},
   footer:{about:"مرصد تفاعلي للأحداث الجيوسياسية في الشرق الأوسط وشمال أفريقيا، مبني على بيانات مصنّفة ومنهجية معلنة.",
     links:"أقسام الموقع",data:"البيانات",contact:"تواصل",rights:"جميع الحقوق محفوظة.",
-    nlH:"النشرة البريدية",nlDesc:"موجز أسبوعي لأبرز الأحداث والتقييم — بلا إزعاج.",nlPh:"بريدك الإلكتروني",nlBtn:"اشترك",nlOk:"✓ تمّ اشتراكك، شكرًا لك.",nlFail:"تعذّر الاشتراك، حاول لاحقًا.",
+    nlH:"النشرة البريدية",nlDesc:"موجز أسبوعي لأبرز الأحداث والتقييم — بلا إزعاج.",nlPh:"بريدك الإلكتروني",nlBtn:"اشترك",nlOk:"✓ تمّ اشتراكك، شكرًا لك.",nlFail:"تعذّر الاشتراك، حاول لاحقًا.",tg:"📣 قناة تيليجرام",
     daily:"لوحة التوتر الجيوسياسي اليومية",
     src:"المصدر: ملف الأحداث الإقليمية بعد التنظيف والتوحيد",
     upd:"آخر تحديث للبيانات"}},
@@ -1098,7 +1098,7 @@ var I18N={
     info:"Contact details",sent:"This is a demo form and does not send. It connects to email on deployment."},
   footer:{about:"An interactive observatory of geopolitical events across the Middle East and North Africa, built on classified data and a declared methodology.",
     links:"Sections",data:"Data",contact:"Contact",rights:"All rights reserved.",
-    nlH:"Newsletter",nlDesc:"A weekly brief of key events and assessment — no spam.",nlPh:"Your email",nlBtn:"Subscribe",nlOk:"✓ Subscribed, thank you.",nlFail:"Could not subscribe, try later.",
+    nlH:"Newsletter",nlDesc:"A weekly brief of key events and assessment — no spam.",nlPh:"Your email",nlBtn:"Subscribe",nlOk:"✓ Subscribed, thank you.",nlFail:"Could not subscribe, try later.",tg:"📣 Telegram channel",
     daily:"Daily geopolitical tension dashboard",
     src:"Source: regional events file after cleaning and canonicalisation",
     upd:"Data last updated"}}
@@ -2686,7 +2686,9 @@ function renderChrome(){
     '<input class="inp" name="email" type="email" required placeholder="'+esc(f.nlPh)+'" style="flex:1;min-width:150px;padding:9px 12px;font-size:13px">'+
     '<button class="btn p sm" type="submit">'+esc(f.nlBtn)+'</button>'+
     '<span id="nlm" class="muted hide" style="font-size:12px;width:100%"></span></form>'+
-   '<a class="btn g sm" href="#/contact" data-nav style="margin-top:12px">'+esc(t.nav.contact)+'</a></div>';
+   '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+
+    '<a class="btn g sm" href="https://t.me/AlmarsadME" target="_blank" rel="noopener">'+esc(f.tg)+'</a>'+
+    '<a class="btn g sm" href="#/contact" data-nav>'+esc(t.nav.contact)+'</a></div></div>';
  el("footerCopy").innerHTML='<span><span class="n">2026</span> © '+esc(t.brand)+'. '+esc(f.rights)+'</span><span>'+esc(f.src)+'</span>';
  var nlf=el("nlf");
  if(nlf){nlf.addEventListener("submit",function(e){e.preventDefault();
