@@ -1,0 +1,44 @@
+name: حصاد الأخبار الآلي
+
+# ① خطوة الجلب من إجراء run_daily.md — تعمل على مشغّلات GitHub لأن مواقع الأخبار
+# محجوبة في بيئة وكيل التصنيف. تودع الحصاد في المستودع قبل جولة التصنيف بنصف ساعة.
+on:
+  schedule:
+    - cron: '30 4,16 * * *' # 7:30ص و7:30م بتوقيت الرياض
+  workflow_dispatch:
+
+permissions:
+  contents: write # لإيداع raw_items.json وfetch_meta.json في المستودع
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: جلب أخبار آخر 48 ساعة
+        run: python pipeline/fetch_sources.py
+      - name: ختم وقت الجلب
+        run: |
+          python - <<'EOF'
+          import json, datetime
+          items = json.load(open("pipeline/raw_items.json", encoding="utf-8"))
+          meta = {"fetched_at": datetime.datetime.now(datetime.timezone.utc)
+                                .strftime("%Y-%m-%dT%H:%M:%SZ"),
+                  "count": len(items)}
+          json.dump(meta, open("pipeline/fetch_meta.json", "w", encoding="utf-8"),
+                    ensure_ascii=False, indent=1)
+          EOF
+      - name: إيداع الحصاد في المستودع
+        run: |
+          if [[ -n "$(git status --porcelain pipeline/raw_items.json pipeline/fetch_meta.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add pipeline/raw_items.json pipeline/fetch_meta.json
+            git commit -m "حصاد أخبار آلي [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
