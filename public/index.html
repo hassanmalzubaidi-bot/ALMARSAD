@@ -2169,13 +2169,22 @@ function droppedMonths(){
    عدد الأحداث الشديدة ونسبتها، لا العدد الكلي. */
 function hotspots(minSev, minRatio){
   minSev=minSev||5; minRatio=minRatio||0.10;
+  /* المسارح البحرية تُدمج عبر الكيانات: التشظي (اليمن|البحر الأحمر + الحوثيون|البحر الأحمر…)
+     كان يُبقي كلًّا تحت العتبة رغم أن المسرح الواحد بؤرة فعلية */
+  var CAL={"مضيق باب المندب":"باب المندب","هرمز":"مضيق هرمز","بحر عُمان":"بحر عمان","الخليج العربي":"الخليج"};
+  var THE={"البحر الأحمر":"البحر الأحمر وباب المندب","باب المندب":"البحر الأحمر وباب المندب","خليج عدن":"البحر الأحمر وباب المندب",
+           "مضيق هرمز":"مضيق هرمز والخليج","بحر عمان":"مضيق هرمز والخليج","الخليج":"مضيق هرمز والخليج"};
   var m={};
   R.forEach(function(r){
     if(!r[2]) return;
-    var k=r[1]+"|"+r[2];
-    if(!m[k]) m[k]={ent:r[1],city:r[2],n:0,w:0,sev:0,nat:{},months:{},
+    var city=CAL[r[2]]||r[2];
+    var th=THE[city]; if(th) city=th;
+    var k=(th?"T":r[1])+"|"+city;
+    if(!m[k]) m[k]={ent:r[1],city:city,n:0,w:0,sev:0,nat:{},months:{},entc:{},
                     first:r[0],last:r[0],lat:r[3],lon:r[4],prec:r[5]};
     var h=m[k];
+    h.entc[r[1]]=(h.entc[r[1]]||0)+(r[8]<=1?3:1);
+    if((!h.lat||!h.lon)&&r[3]&&r[4]){h.lat=r[3];h.lon=r[4];h.prec=r[5];}
     h.n++; h.w+=WR[r[8]]||0;
     if(r[8]<=1) h.sev++;
     nats(r[6]).forEach(function(x){h.nat[x]=(h.nat[x]||0)+1});
@@ -2197,6 +2206,10 @@ function hotspots(minSev, minRatio){
     h.active=rc>0;
     h.span=Object.keys(h.months).length;
     h.top=Object.keys(h.nat).sort(function(a,b){return h.nat[b]-h.nat[a]})[0]||"—";
+    if(k.slice(0,2)==="T|"){
+      h.theatre=true;
+      h.ent=+Object.keys(h.entc).sort(function(a,b){return h.entc[b]-h.entc[a]})[0];
+    }
     return h;
   });
   var hs=all.filter(function(h){return h.sev>=minSev && h.ratio>=minRatio})
@@ -2266,6 +2279,8 @@ function pageHotspots(){
   var HS=hotspots(5,0.10), MX=matrix();
   var active=HS.filter(function(x){return x.active});
   var top=HS.slice(0,14);
+  /* المسارح البحرية استراتيجية — تُعرض دائمًا ولو كانت دون ترتيب الأعلى-14 */
+  HS.forEach(function(x){if(x.theatre&&top.indexOf(x)<0)top.push(x)});
 
   /* خريطة البؤر */
   var pts="";
