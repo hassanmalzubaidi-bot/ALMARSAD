@@ -200,6 +200,14 @@ h3{font-size:18px;font-weight:700}
 .rk{display:inline-block;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap}
 /* ── الخط الزمني ثنائي العمود لملف الفاعل ── */
 .tlx{margin-top:4px}
+/* ── العضوية المجانية ── */
+#memdlg{border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);padding:26px;max-width:430px;width:92vw;box-shadow:var(--sh)}
+#memdlg::backdrop{background:rgba(10,14,20,.55);backdrop-filter:blur(3px)}
+#memdlg h3{font-size:19px}
+#memdlg .inp{width:100%;margin-top:4px}
+.gatec{border:1.5px dashed var(--accent);border-radius:12px;background:var(--bg2);text-align:center;padding:18px;margin-top:12px}
+.gatec b{font-size:14.5px}
+.gatec p{font-size:12.5px;color:var(--dim);margin:6px 0 0}
 .tlxr{display:grid;grid-template-columns:1fr 30px 1fr;align-items:stretch}
 .tlxhead{font-size:12.5px;font-weight:800;text-align:center;position:sticky;top:0;background:var(--card);z-index:2;padding:6px 0;border-bottom:1px solid var(--line)}
 .tlxs{position:relative;display:flex;justify-content:center}
@@ -594,6 +602,7 @@ footer a:hover{color:var(--brand)}
   <div class="tools">
     <button class="ib" id="themeBtn" aria-label="تبديل الوضع"></button>
     <button class="ib" id="langBtn" style="width:auto;padding:0 13px;font-size:13.5px;font-weight:600">EN</button>
+    <button class="ib" id="memBtn" style="width:auto;padding:0 13px;font-size:13.5px;font-weight:600"></button>
     <button class="ib burger" id="burger" aria-label="القائمة" aria-expanded="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/></svg>
     </button>
@@ -602,6 +611,18 @@ footer a:hover{color:var(--brand)}
 
 <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden><input type="text" name="name"/><input type="email" name="email"/><input type="text" name="org"/><input type="text" name="subject"/><textarea name="message"></textarea></form>
 <form name="newsletter" data-netlify="true" netlify-honeypot="bot-field" hidden><input type="email" name="email"/></form>
+<form name="members" data-netlify="true" netlify-honeypot="bot-field" hidden><input type="text" name="name"/><input type="email" name="email"/></form>
+<dialog id="memdlg"><form id="memf" novalidate>
+  <h3 id="memH"></h3>
+  <p class="muted" id="memL" style="font-size:13px;margin-top:8px;line-height:1.85"></p>
+  <p style="display:none"><label><input name="bot-field" tabindex="-1"></label></p>
+  <label style="display:block;margin-top:14px;font-size:13px;color:var(--dim)"><span id="memNL"></span><input class="inp" id="memName" name="name" required></label>
+  <label style="display:block;margin-top:10px;font-size:13px;color:var(--dim)"><span id="memEL"></span><input class="inp" id="memEmail" name="email" type="email" required></label>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+    <button class="btn g sm" id="memC" type="button"></button>
+    <button class="btn p sm" id="memGo" type="submit"></button></div>
+  <p class="muted" id="memN" style="font-size:11.5px;margin-top:12px"></p>
+</form></dialog>
 <main id="app"></main>
 
 <footer><div class="w">
@@ -865,6 +886,14 @@ var I18N={
       ["قابلية التكذيب","كل تقدير يرافقه مؤشرات تُبطله إذا لم تتحقق. التقدير غير القابل للتكذيب ليس تحليلًا."],
       ["مسافة متساوية","المرصد لا ينوب عن طرف. حين تتعارض الروايات تُعرض جميعها مع تقدير وزن الأدلة خلف كل منها."]],
     covH:"نطاق التغطية"},
+  mem:{btn:"تسجيل الدخول",hi:"👤",out:"خروج",outQ:"تسجيل الخروج من العضوية على هذا الجهاز؟",
+    h:"عضوية المرصد — مجانية",
+    lede:"سجّل مرة واحدة لتفتح كل المحتوى: التقييمات التحليلية كاملة، دوسيهات الفاعلين والملفات الموضوعية، ونتائج المستكشف بلا حدود مع التصدير.",
+    name:"الاسم",email:"البريد الإلكتروني",cta:"سجّل مجانًا",cancel:"لاحقًا",
+    ok:"✓ أهلًا بك — فُتح كل المحتوى.",fail:"تعذّر التسجيل، حاول لاحقًا.",
+    note:"التسجيل مجاني ولن نشارك بريدك. على جهاز جديد؟ أدخل البيانات نفسها للدخول.",
+    locked:"هذا المحتوى للأعضاء",unlock:"التسجيل مجاني ويستغرق ثوانيَ — ويفتح كل التحليلات",
+    exGate:"يعرض غير الأعضاء أول 50 نتيجة فقط — سجّل مجانًا لعرض كل النتائج وتصديرها."},
   contact:{eyebrow:"اتصل بنا",h2:"للتواصل",lede:"لطلبات التقييمات المخصصة أو التعاون البحثي.",
     name:"الاسم",email:"البريد الإلكتروني",org:"الجهة",subject:"الموضوع",msg:"الرسالة",send:"إرسال",
     info:"معلومات التواصل",sent:"هذا نموذج عرض ولا يرسل فعليًا. يُربط بالبريد عند التشغيل."},
@@ -1094,6 +1123,14 @@ var I18N={
       ["Falsifiability","Each judgement ships with indicators that would disprove it. An estimate that cannot be wrong is not analysis."],
       ["Equal distance","The observatory does not act for any party. Where accounts conflict, all are presented with an assessment of the evidence behind each."]],
     covH:"Coverage"},
+  mem:{btn:"Sign in",hi:"👤",out:"Sign out",outQ:"Sign out of membership on this device?",
+    h:"Observatory membership — free",
+    lede:"Register once to unlock everything: full analytical assessments, actor and thematic dossiers, and unlimited explorer results with export.",
+    name:"Name",email:"Email",cta:"Register free",cancel:"Later",
+    ok:"✓ Welcome — all content unlocked.",fail:"Registration failed, try later.",
+    note:"Free, and we never share your email. New device? Enter the same details to sign in.",
+    locked:"Members-only content",unlock:"Registration is free and takes seconds — unlocks all analysis",
+    exGate:"Non-members see the first 50 results — register free for full results and export."},
   contact:{eyebrow:"Contact",h2:"Get in touch",lede:"For commissioned assessments or research collaboration.",
     name:"Name",email:"Email",org:"Organisation",subject:"Subject",msg:"Message",send:"Send",
     info:"Contact details",sent:"This is a demo form and does not send. It connects to email on deployment."},
@@ -1117,6 +1154,15 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function fmt(n){return Number(n).toLocaleString("en-US")}
 function LT(o,f){return (o&&S.lang==="en"&&o[f+"_en"]!=null&&o[f+"_en"]!=="")?o[f+"_en"]:(o?o[f]:"")}
+/* ── العضوية المجانية: تسجيل يفتح المحتوى الكامل؛ غير المسجّل يرى مقتطفات وحدودًا ── */
+function MEMBER(){try{return JSON.parse(localStorage.getItem("marsadMember")||"null")}catch(e){return null}}
+function gateCard(){var m=T().mem;
+ return '<div class="gatec"><b>🔒 '+esc(m.locked)+'</b><p>'+esc(m.unlock)+'</p>'+
+  '<button class="btn p sm" data-mem style="margin-top:12px">'+esc(m.cta)+'</button></div>'}
+function memText(txt){
+ var paras=String(txt).split(/\n\s*\n|\n/).filter(function(p){return p.trim()});
+ if(MEMBER()) return paras.map(function(p){return '<p style="margin:0 0 12px">'+esc(p.trim())+'</p>'}).join('');
+ return (paras[0]?'<p style="margin:0 0 12px">'+esc(paras[0].trim())+'</p>':'')+gateCard()}
 function el(i){return document.getElementById(i)}
 function RN(i){return (S.lang==="ar"?RN_AR:RN_EN)[i]}
 function natL(n){return S.lang==="ar"?n:(NAT_EN[n]||n)}
@@ -1522,6 +1568,8 @@ function filtersHTML(){
 
 function pageExplorer(){
  var t=T(); compute();
+ var fullN=CUR.length, gated=!MEMBER()&&fullN>50;
+ if(gated) CUR=CUR.slice(0,50);
  var pgs=Math.max(1,Math.ceil(CUR.length/PER)); if(S.pg>pgs)S.pg=pgs;
  var list=CUR.slice((S.pg-1)*PER,S.pg*PER);
  return pageHead({eyebrow:t.nav.explorer,h2:t.nav.explorer,
@@ -1533,9 +1581,13 @@ function pageExplorer(){
    '<label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--dim)">'+esc(t.sort)+
     '<select class="inp" id="srt" style="width:auto;min-height:42px">'+t.sortOpts.map(function(o){
       return '<option value="'+o[0]+'"'+(S.srt===o[0]?" selected":"")+'>'+esc(o[1])+'</option>'}).join("")+'</select></label>'+
-   '<span style="margin-inline-start:auto;font-size:14px;color:var(--dim)"><b class="n" style="color:var(--ink)">'+fmt(CUR.length)+'</b> '+esc(t.results)+'</span>'+
-   '<button class="btn p sm" id="csv">'+svg("dl",15)+esc(t.export)+'</button>'+
+   '<span style="margin-inline-start:auto;font-size:14px;color:var(--dim)"><b class="n" style="color:var(--ink)">'+fmt(CUR.length)+'</b>'+
+    (gated?' / <b class="n">'+fmt(fullN)+'</b>':'')+' '+esc(t.results)+'</span>'+
+   (MEMBER()?'<button class="btn p sm" id="csv">'+svg("dl",15)+esc(t.export)+'</button>'
+    :'<button class="btn g sm" data-mem>🔒 '+esc(t.export)+'</button>')+
   '</div>'+
+  (gated?'<div class="gatec" style="margin:0 0 16px"><b>🔒 '+esc(t.mem.exGate)+'</b><br>'+
+   '<button class="btn p sm" data-mem style="margin-top:10px">'+esc(t.mem.cta)+'</button></div>':'')+
   kpis()+
   '<div class="lay" style="margin-top:20px">'+
    '<aside class="rail"><div class="card" id="rail">'+filtersHTML()+'</div></aside>'+
@@ -1730,7 +1782,7 @@ function pageReports(){
      '<span class="tagd" style="margin-inline-start:auto">'+esc(HA?((ar?"بقلم ":"By ")+(LT(HA,'by')||(ar?"المحلل":"analyst"))):t.rep.empty)+'</span></div>'+
     (HA?'':'<p class="muted" style="margin-top:8px">'+esc(t.rep.humanNote)+'</p>')+
     (HA?'<div class="assess" style="margin-top:14px;line-height:1.95;font-size:14.7px">'+
-      String(LT(HA,'text')).split(/\n\s*\n|\n/).filter(function(p){return p.trim()}).map(function(p){return '<p style="margin:0 0 12px">'+esc(p.trim())+'</p>'}).join('')+
+      memText(LT(HA,'text'))+
       '<p class="muted" style="font-size:12.5px;margin-top:18px;border-top:1px solid var(--line);padding-top:12px">'+(ar?'\u2014 \u0628\u0642\u0644\u0645 ':'\u2014 By ')+esc(LT(HA,'by')||(ar?'\u0645\u062d\u0644\u0644 \u0627\u0644\u0645\u0631\u0635\u062f':'Observatory analyst'))+(HA.date?' \u00b7 '+esc(HA.date):'')+'</p></div>'
     :'<div style="margin-top:16px;border:1px dashed var(--line);border-radius:12px;padding:18px">'+
      ['keyJudge','confidence','falsifiers','drivers','implications'].map(function(k,i){
@@ -1869,7 +1921,7 @@ function pageDossiers(){
         '<span class="rk" style="background:'+RC[1]+'">'+fmt(sev.length)+' '+esc(ar?"حرج/مرتفع جداً":"critical")+'</span></div>'+
        (LT(D,'lede')?'<p class="lede" style="margin-top:8px">'+esc(LT(D,'lede'))+'</p>':'')+
        '<div class="assess" style="margin-top:14px;line-height:1.95;font-size:14.7px">'+
-        String(LT(D,'text')).split(/\n\s*\n|\n/).filter(function(p){return p.trim()}).map(function(p){return '<p style="margin:0 0 12px">'+esc(p.trim())+'</p>'}).join('')+
+        memText(LT(D,'text'))+
         '<p class="muted" style="font-size:12.5px;margin-top:16px;border-top:1px solid var(--line);padding-top:12px">'+(ar?'— بقلم ':'— By ')+esc(LT(D,'by')||'HMZ')+(D.date?' · '+esc(D.date):'')+'</p></div>'+
        (sev.length?'<h3 style="margin-top:18px;font-size:15px">'+esc(ar?"أبرز أحداث الملف":"Key events")+'</h3><div style="margin-top:10px">'+rowsTable(sev.slice(0,8))+'</div>':'')+
      '</div>'}).join(""):'<p class="muted">—</p>')+
@@ -2075,7 +2127,7 @@ function pageActors(){
      '<div style="display:flex;gap:10px;align-items:center"><h3>'+esc(a.humanH)+'</h3>'+
       '<span class="tagd" style="margin-inline-start:auto">'+esc((S.lang==="ar"?"بقلم ":"By ")+(LT(HP,'by')||(S.lang==="ar"?"المحلل":"analyst")))+'</span></div>'+
      '<div class="assess" style="margin-top:14px;line-height:1.95;font-size:14.7px">'+
-      String(LT(HP,'text')).split(/\n\s*\n|\n/).filter(function(p){return p.trim()}).map(function(p){return '<p style="margin:0 0 12px">'+esc(p.trim())+'</p>'}).join('')+
+      memText(LT(HP,'text'))+
       '<p class="muted" style="font-size:12.5px;margin-top:18px;border-top:1px solid var(--line);padding-top:12px">'+(S.lang==="ar"?'— بقلم ':'— By ')+esc(LT(HP,'by')||(S.lang==="ar"?'محلل المرصد':'Observatory analyst'))+(HP.date?' · '+esc(HP.date):'')+'</p></div></div>'
     :
     '<div class="card" style="margin-top:18px;border-style:dashed">'+
@@ -2664,6 +2716,13 @@ function renderChrome(){
  el("brandName").textContent=t.brand;
  el("brandSub").textContent=t.brandSub;
  el("langBtn").textContent=t.other;
+ (function(){var mm=MEMBER(),b=el("memBtn");
+  b.textContent=mm?("👤 "+String(mm.name||"").split(" ")[0]):t.mem.btn;
+  b.title=mm?t.mem.out:t.mem.btn;
+  el("memH").textContent=t.mem.h; el("memL").textContent=t.mem.lede;
+  el("memNL").textContent=t.mem.name; el("memEL").textContent=t.mem.email;
+  el("memC").textContent=t.mem.cancel; el("memGo").textContent=t.mem.cta;
+  el("memN").textContent=t.mem.note;})();
  el("themeBtn").innerHTML=svg(S.theme==="dark"?"sun":"moon",19);
  var base="/"+(S.route.split("/")[1]||"");
  el("nav").innerHTML=ROUTES.filter(function(r){return (RAW.hidden||[]).indexOf(r[0])<0}).map(function(r){
@@ -3000,6 +3059,21 @@ function go(){S.route=(location.hash||"#/").replace(/^#/,"")||"/";S.pg=1;S.actor
  var b=el("burger");if(b)b.setAttribute("aria-expanded","false")}
 
 el("themeBtn").addEventListener("click",function(){S.theme=S.theme==="dark"?"light":"dark";applyTheme();renderChrome()});
+el("memBtn").addEventListener("click",function(){
+ if(MEMBER()){if(confirm(T().mem.outQ)){localStorage.removeItem("marsadMember");renderChrome();render();}}
+ else el("memdlg").showModal();});
+el("memC").addEventListener("click",function(){el("memdlg").close()});
+document.addEventListener("click",function(e){
+ var g=e.target.closest?e.target.closest("[data-mem]"):null;
+ if(g){el("memdlg").showModal();}});
+el("memf").addEventListener("submit",function(e){e.preventDefault();
+ var nm=el("memName").value.trim(), em=el("memEmail").value.trim(), t=T().mem;
+ if(!nm||!em||em.indexOf("@")<1){el("memN").textContent=t.fail;return;}
+ var body=new URLSearchParams({"form-name":"members",name:nm,email:em}).toString();
+ fetch("/",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body})
+  .catch(function(){/* حتى عند تعذّر الشبكة تُفتح العضوية محليًا */});
+ localStorage.setItem("marsadMember",JSON.stringify({name:nm,email:em,ts:Date.now()}));
+ el("memdlg").close(); renderChrome(); render();});
 el("langBtn").addEventListener("click",function(){S.lang=S.lang==="ar"?"en":"ar";applyLang();render()});
 el("burger").addEventListener("click",function(){var n=el("nav"),o=n.classList.toggle("open");
  el("burger").setAttribute("aria-expanded",o?"true":"false")});
