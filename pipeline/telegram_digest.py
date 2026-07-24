@@ -15,7 +15,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE = os.path.join(ROOT, "public", "index.html")
-SITE_URL = "https://famous-biscochitos-e29381.netlify.app"
+SITE_URL = "https://almarsadme.com"
 RIYADH_TZ = timezone(timedelta(hours=3))
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
