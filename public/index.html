@@ -2174,17 +2174,20 @@ function hotspots(minSev, minRatio){
   var CAL={"مضيق باب المندب":"باب المندب","هرمز":"مضيق هرمز","بحر عُمان":"بحر عمان","الخليج العربي":"الخليج"};
   var THE={"البحر الأحمر":"البحر الأحمر وباب المندب","باب المندب":"البحر الأحمر وباب المندب","خليج عدن":"البحر الأحمر وباب المندب",
            "مضيق هرمز":"مضيق هرمز والخليج","بحر عمان":"مضيق هرمز والخليج","الخليج":"مضيق هرمز والخليج"};
+  /* إحداثيات قانونية ثابتة للمسارح — عند نقطة الاختناق نفسها لا وسط المسطح المائي */
+  var THE_XY={"البحر الأحمر وباب المندب":[13.4,43.0],"مضيق هرمز والخليج":[26.6,56.3]};
   var m={};
   R.forEach(function(r){
     if(!r[2]) return;
     var city=CAL[r[2]]||r[2];
     var th=THE[city]; if(th) city=th;
     var k=(th?"T":r[1])+"|"+city;
-    if(!m[k]) m[k]={ent:r[1],city:city,n:0,w:0,sev:0,nat:{},months:{},entc:{},
-                    first:r[0],last:r[0],lat:r[3],lon:r[4],prec:r[5]};
+    if(!m[k]) m[k]={ent:r[1],city:city,n:0,w:0,sev:0,nat:{},months:{},entc:{},fixed:!!th,
+                    first:r[0],last:r[0],
+                    lat:th?THE_XY[city][0]:r[3],lon:th?THE_XY[city][1]:r[4],prec:th?1:r[5]};
     var h=m[k];
     h.entc[r[1]]=(h.entc[r[1]]||0)+(r[8]<=1?3:1);
-    if((!h.lat||!h.lon)&&r[3]&&r[4]){h.lat=r[3];h.lon=r[4];h.prec=r[5];}
+    if(!h.fixed&&(!h.lat||!h.lon)&&r[3]&&r[4]){h.lat=r[3];h.lon=r[4];h.prec=r[5];}
     h.n++; h.w+=WR[r[8]]||0;
     if(r[8]<=1) h.sev++;
     nats(r[6]).forEach(function(x){h.nat[x]=(h.nat[x]||0)+1});
