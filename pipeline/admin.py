@@ -482,8 +482,9 @@ var P={page:1,meta:null,
  sweep:function(){
   fetch('/api/sweep',{method:'POST',body:JSON.stringify({})}).then(r=>r.json()).then(function(d){
    if(!d.hits.length){P.toast('🛡️ لا مخالفات لسياسة سمعة الأسر الحاكمة — البيانات نظيفة');return}
-   var msg='🛡️ مخالفات مرصودة ('+d.hits.length+'):\n\n'+d.hits.map(function(h){
-     return '• ['+h['التاريخ']+'] '+h['الكيان']+' — '+h['الحدث']+'\n   السبب: '+h['السبب']}).join('\n')+'\n\nحذفها الآن؟';
+   var NL=String.fromCharCode(10);
+   var msg='🛡️ مخالفات مرصودة ('+d.hits.length+'):'+NL+NL+d.hits.map(function(h){
+     return '• ['+h['التاريخ']+'] '+h['الكيان']+' — '+h['الحدث']+NL+'   السبب: '+h['السبب']}).join(NL)+NL+NL+'حذفها الآن؟';
    if(!confirm(msg))return;
    fetch('/api/sweep',{method:'POST',body:JSON.stringify({apply:1})}).then(r=>r.json()).then(function(x){
     P.toast('🛡️ حُذفت '+x.removed+' — اضغط «حفظ ونشر» لتحديث الموقع');P.go(P.page)})})}
