@@ -145,6 +145,7 @@ def api_list(q):
             "all": len(d["rows"]), "nat": d["nat"], "rn": RN, "sc": SC,
             "reports": d.get("reports", {}), "hidden": d.get("hidden", []), "pages": PAGES,
             "forecasts": d.get("forecasts", []),
+            "gate": d.get("gate", {}),
             "months": sorted({dt_iso(r[0])[:7] for r in d["rows"]}, reverse=True),
             "rows": [row_view(i, r) for i, r in rows]}
 
@@ -236,6 +237,21 @@ def api_forecast(body):
     return {"ok": True, "dirty": STATE["dirty"], "id": fid, "outcome": outcome, "resolvedOn": f["resolvedOn"]}
 
 
+def api_gate(body):
+    """إعدادات بوابة العضوية (RAW.gate): تشغيل/إيقاف، حد المستكشف، الأقسام المقفولة."""
+    gate = {
+        "on": 1 if body.get("on") else 0,
+        "limit": max(0, int(body.get("limit") or 0)),
+        "assess": 1 if body.get("assess") else 0,
+        "profiles": 1 if body.get("profiles") else 0,
+        "dossiers": 1 if body.get("dossiers") else 0,
+        "xport": 1 if body.get("xport") else 0,
+    }
+    STATE["data"]["gate"] = gate
+    STATE["dirty"] += 1
+    return {"ok": True, "dirty": STATE["dirty"], "gate": gate}
+
+
 PAGE = """<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>لوحة أدمن — مرصد الشرق الأوسط</title><style>
@@ -268,6 +284,7 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
 <button onclick="P.openPages()">👁️ الصفحات</button>
 <button onclick="P.openAssess()">✍️ التقييم التحليلي</button>
 <button onclick="P.openFc()">⏳ التوقعات</button>
+<button onclick="P.openGate()">🔐 العضوية</button>
 <button class="p" onclick="P.publish()">🚀 حفظ ونشر</button>
 </header><main id="list"></main>
 <dialog id="adlg"><form method="dialog" id="af" style="display:grid;gap:10px;min-width:min(680px,92vw)">
@@ -279,6 +296,25 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
 <p class="meta" style="margin:0">يُحفظ للشهر المختار ويحلّ محلّ السقالة في صفحة «التقارير». لمسحه: افرغ النص واحفظ.</p>
 <div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">إغلاق</button>
 <button class="p" value="ok" onclick="P.saveAssess(event)">حفظ التقييم</button></div>
+</form></dialog>
+<dialog id="gdlg"><form method="dialog" style="display:grid;gap:12px;min-width:min(520px,94vw)">
+<h3 style="margin:0">🔐 بوابة العضوية — ماذا يرى غير المسجّلين</h3>
+<label style="display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px 12px">
+ <input type="checkbox" id="gOn" style="width:18px;height:18px"> <b>تفعيل البوابة</b>
+ <span class="meta">(إيقافها = الموقع كله مفتوح للجميع)</span></label>
+<label style="display:flex;align-items:center;gap:10px;padding:0 4px">حد نتائج المستكشف لغير الأعضاء
+ <input type="number" id="gLimit" min="0" step="10" style="width:90px"> <span class="meta">(0 = بلا حد)</span></label>
+<div style="display:grid;gap:6px">
+ <p class="meta" style="margin:0">الأقسام المقفولة لغير الأعضاء (فقرة أولى + دعوة تسجيل):</p>
+ <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gAssess" style="width:17px;height:17px"> التقييم التحليلي الشهري</label>
+ <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gProfiles" style="width:17px;height:17px"> دوسيهات الفاعلين</label>
+ <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gDossiers" style="width:17px;height:17px"> الملفات الموضوعية</label>
+ <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gXport" style="width:17px;height:17px"> قفل تصدير CSV</label>
+</div>
+<a href="https://app.netlify.com/projects/famous-biscochitos-e29381/forms" target="_blank" rel="noopener"
+ style="font-size:13px">👥 عرض قائمة الأعضاء المسجّلين (Netlify ← Forms ← members)</a>
+<div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">إغلاق</button>
+<button class="p" value="ok" onclick="P.saveGate(event)">حفظ الإعدادات</button></div>
 </form></dialog>
 <dialog id="fdlg"><form method="dialog" style="display:grid;gap:10px;min-width:min(700px,94vw)">
 <h3 style="margin:0">⏳ سجل التوقعات — الإغلاق والمحاسبة</h3>
@@ -403,7 +439,28 @@ var P={page:1,meta:null,
    if(!d.ok){P.toast('⚠ '+(d.err||'خطأ'));return}
    var f=((P.meta&&P.meta.forecasts)||[]).filter(function(x){return x.id===id})[0];
    if(f){f.outcome=d.outcome;f.resolvedOn=d.resolvedOn}
-   P.renderFc();P.toast(outcome?'✓ أُغلق التوقع — اضغط «حفظ ونشر» لتحديث الموقع':'↺ أُعيد فتح التوقع (غير محفوظ بعد)')})}
+   P.renderFc();P.toast(outcome?'✓ أُغلق التوقع — اضغط «حفظ ونشر» لتحديث الموقع':'↺ أُعيد فتح التوقع (غير محفوظ بعد)')})},
+ openGate:function(){
+  var g=(P.meta&&P.meta.gate)||{};
+  var v=function(k,dflt){return g[k]==null?dflt:g[k]};
+  document.getElementById('gOn').checked=v('on',1)!==0;
+  document.getElementById('gLimit').value=v('limit',50);
+  document.getElementById('gAssess').checked=v('assess',1)!==0;
+  document.getElementById('gProfiles').checked=v('profiles',1)!==0;
+  document.getElementById('gDossiers').checked=v('dossiers',1)!==0;
+  document.getElementById('gXport').checked=v('xport',1)!==0;
+  document.getElementById('gdlg').showModal()},
+ saveGate:function(ev){ev.preventDefault();
+  var body={on:document.getElementById('gOn').checked?1:0,
+   limit:+document.getElementById('gLimit').value||0,
+   assess:document.getElementById('gAssess').checked?1:0,
+   profiles:document.getElementById('gProfiles').checked?1:0,
+   dossiers:document.getElementById('gDossiers').checked?1:0,
+   xport:document.getElementById('gXport').checked?1:0};
+  fetch('/api/gate',{method:'POST',body:JSON.stringify(body)}).then(r=>r.json()).then(function(d){
+   if(P.meta)P.meta.gate=d.gate;
+   document.getElementById('gdlg').close();
+   P.toast(body.on?'🔐 حُفظت إعدادات البوابة — اضغط «حفظ ونشر» لتفعيلها على الموقع':'🔓 البوابة معطّلة — الموقع كله مفتوح بعد «حفظ ونشر»')})}
 };
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
 var q=document.getElementById('q'),risk=document.getElementById('risk'),country=document.getElementById('country');
@@ -450,6 +507,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, api_pages(body))
             elif u.path == "/api/forecast":
                 self._send(200, api_forecast(body))
+            elif u.path == "/api/gate":
+                self._send(200, api_gate(body))
             elif u.path == "/api/save":
                 self._send(200, {"ok": True, "total": save()})
             elif u.path == "/api/publish":
