@@ -2707,8 +2707,10 @@ function pageDoc(){
      '<select class="inp" id="docSel" style="width:auto;min-height:42px">'+
       ms.map(function(m){return '<option value="'+m+'"'+(m===S.docMonth?" selected":"")+'>'+m+'</option>'}).join("")+
      '</select></label>'+
-    '<button class="btn p sm" id="pdfBtn">'+svg("dl",15)+esc(t.doc.pdf)+'</button>'+
-    '<span style="font-size:12px;color:var(--dim)">'+esc(t.doc.pdfHint)+'</span>'+
+    ((!GCFG().on||MEMBER()||!GCFG().xport)
+     ?'<button class="btn p sm" id="pdfBtn">'+svg("dl",15)+esc(t.doc.pdf)+'</button>'+
+      '<span style="font-size:12px;color:var(--dim)">'+esc(t.doc.pdfHint)+'</span>'
+     :'<button class="btn g sm" data-mem>🔒 '+esc(t.doc.pdf)+'</button>')+
    '</div>'+
    docMonthly(S.docMonth)+
   '</div></section>';

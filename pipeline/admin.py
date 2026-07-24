@@ -309,7 +309,7 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gAssess" style="width:17px;height:17px"> التقييم التحليلي الشهري</label>
  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gProfiles" style="width:17px;height:17px"> دوسيهات الفاعلين</label>
  <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gDossiers" style="width:17px;height:17px"> الملفات الموضوعية</label>
- <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gXport" style="width:17px;height:17px"> قفل تصدير CSV</label>
+ <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gXport" style="width:17px;height:17px"> قفل التصدير (CSV + PDF)</label>
 </div>
 <a href="https://app.netlify.com/projects/famous-biscochitos-e29381/forms" target="_blank" rel="noopener"
  style="font-size:13px">👥 عرض قائمة الأعضاء المسجّلين (Netlify ← Forms ← members)</a>
