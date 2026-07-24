@@ -12,6 +12,9 @@ import json, os, re, sys, time, threading, subprocess, webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import editorial_policy as EP
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE = os.path.join(ROOT, "public", "index.html")
 
@@ -252,6 +255,20 @@ def api_gate(body):
     return {"ok": True, "dirty": STATE["dirty"], "gate": gate}
 
 
+def api_sweep(body):
+    """الفلتر التحريري (سمعة الأسر الحاكمة): فحص، وبـ apply=1 حذف المخالفات."""
+    d = STATE["data"]
+    hits = EP.sweep_rows(d["rows"], d["ents"])
+    view = [{"i": i, "التاريخ": dt_iso(r[0]), "الكيان": d["ents"][r[1]],
+             "الحدث": str(r[9])[:90], "السبب": reason} for i, reason, r in hits]
+    if body.get("apply") and hits:
+        drop = {i for i, _, _ in hits}
+        d["rows"] = [r for i, r in enumerate(d["rows"]) if i not in drop]
+        STATE["dirty"] += 1
+        return {"ok": True, "removed": len(hits), "hits": view, "dirty": STATE["dirty"]}
+    return {"ok": True, "removed": 0, "hits": view, "dirty": STATE["dirty"]}
+
+
 PAGE = """<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>لوحة أدمن — مرصد الشرق الأوسط</title><style>
@@ -285,6 +302,7 @@ dialog form{display:grid;gap:8px}label{font-size:13px;color:var(--dim)}
 <button onclick="P.openAssess()">✍️ التقييم التحليلي</button>
 <button onclick="P.openFc()">⏳ التوقعات</button>
 <button onclick="P.openGate()">🔐 العضوية</button>
+<button onclick="P.sweep()" title="فلتر سمعة الأسر الحاكمة — فحص وحذف">🛡️ فلتر تحريري</button>
 <button class="p" onclick="P.publish()">🚀 حفظ ونشر</button>
 </header><main id="list"></main>
 <dialog id="adlg"><form method="dialog" id="af" style="display:grid;gap:10px;min-width:min(680px,92vw)">
@@ -460,7 +478,15 @@ var P={page:1,meta:null,
   fetch('/api/gate',{method:'POST',body:JSON.stringify(body)}).then(r=>r.json()).then(function(d){
    if(P.meta)P.meta.gate=d.gate;
    document.getElementById('gdlg').close();
-   P.toast(body.on?'🔐 حُفظت إعدادات البوابة — اضغط «حفظ ونشر» لتفعيلها على الموقع':'🔓 البوابة معطّلة — الموقع كله مفتوح بعد «حفظ ونشر»')})}
+   P.toast(body.on?'🔐 حُفظت إعدادات البوابة — اضغط «حفظ ونشر» لتفعيلها على الموقع':'🔓 البوابة معطّلة — الموقع كله مفتوح بعد «حفظ ونشر»')})},
+ sweep:function(){
+  fetch('/api/sweep',{method:'POST',body:JSON.stringify({})}).then(r=>r.json()).then(function(d){
+   if(!d.hits.length){P.toast('🛡️ لا مخالفات لسياسة سمعة الأسر الحاكمة — البيانات نظيفة');return}
+   var msg='🛡️ مخالفات مرصودة ('+d.hits.length+'):\n\n'+d.hits.map(function(h){
+     return '• ['+h['التاريخ']+'] '+h['الكيان']+' — '+h['الحدث']+'\n   السبب: '+h['السبب']}).join('\n')+'\n\nحذفها الآن؟';
+   if(!confirm(msg))return;
+   fetch('/api/sweep',{method:'POST',body:JSON.stringify({apply:1})}).then(r=>r.json()).then(function(x){
+    P.toast('🛡️ حُذفت '+x.removed+' — اضغط «حفظ ونشر» لتحديث الموقع');P.go(P.page)})})}
 };
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
 var q=document.getElementById('q'),risk=document.getElementById('risk'),country=document.getElementById('country');
@@ -509,6 +535,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, api_forecast(body))
             elif u.path == "/api/gate":
                 self._send(200, api_gate(body))
+            elif u.path == "/api/sweep":
+                self._send(200, api_sweep(body))
             elif u.path == "/api/save":
                 self._send(200, {"ok": True, "total": save()})
             elif u.path == "/api/publish":

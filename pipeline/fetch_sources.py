@@ -90,5 +90,12 @@ if __name__ == "__main__":
     print("① جلب المصادر…")
     all_items = fetch_rss() + fetch_gdelt()
     all_items = dedupe(all_items)
+    # السياسة التحريرية: حجب ما يمسّ سمعة الأسر الحاكمة (سعودية/خليجية) من المنبع
+    import editorial_policy as EP
+    kept = [it for it in all_items
+            if not EP.blocked(f"{it.get('title','')} {it.get('summary','')}")]
+    ed_blocked = len(all_items) - len(kept)
+    all_items = kept
     json.dump(all_items, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    print(f"الإجمالي بعد إزالة التكرار: {len(all_items)} خبرًا خامًا → {OUT}")
+    print(f"الإجمالي بعد إزالة التكرار: {len(all_items)} خبرًا خامًا"
+          + (f" (حُجب تحريريًا: {ed_blocked})" if ed_blocked else "") + f" → {OUT}")

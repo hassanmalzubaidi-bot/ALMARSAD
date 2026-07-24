@@ -8,6 +8,7 @@ import json, os, sys, re, difflib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config as C
 import classify as CL
+import editorial_policy as EP
 
 CLASSIFIED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "classified.json")
 # الفاعلون غير الدوليون (أذرع إقليمية) — يُصنّفون nonstate لا org
@@ -56,8 +57,12 @@ def main():
     data = json.loads(m.group(2))
     keys = existing_keys(data)
 
-    added, skipped = [], 0
+    added, skipped, ed_blocked = [], 0, 0
     for ev in new:
+        # السياسة التحريرية: بوابة أخيرة قبل النشر (سمعة الأسر الحاكمة)
+        if EP.blocked(f"{ev.get('الدولة','')} {ev.get('الحدث','')} {ev.get('التفاصيل','')}"):
+            ed_blocked += 1
+            continue
         k = CL.dedup_key(ev["الدولة"], ev["الحدث"], ev["التاريخ"])
         if k in keys:
             skipped += 1
@@ -89,7 +94,9 @@ def main():
                                    open(C.SITE, encoding="utf-8").read(), re.S).group(1))
         assert len(chk["rows"]) == total and len(chk["ents"]) == len(chk["kinds"])
 
-    print(f"مرشحون: {len(new)} | نُشر: {len(added)} | مكرر مُتجاوَز: {skipped} | إجمالي الموقع: {total}")
+    print(f"مرشحون: {len(new)} | نُشر: {len(added)} | مكرر مُتجاوَز: {skipped}"
+          + (f" | محجوب تحريريًا: {ed_blocked}" if ed_blocked else "")
+          + f" | إجمالي الموقع: {total}")
     return len(added)
 
 
